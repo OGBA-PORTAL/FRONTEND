@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import Image from "next/image"
 import logo from '../assets/ralogo.png'
+import Link from "next/link"
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false)
@@ -133,12 +134,12 @@ const LoginPage = () => {
             </div>
 
             {/* Submit Button */}
-            <button
+             <Link href="/dashboard"> <button 
               type="submit"
               className="w-full gradient-gold text-white font-bold py-3.5 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-yellow-300/50"
             >
-              Sign In
-            </button>
+            SIGN IN
+            </button></Link>
           </form>
 
           {/* Divider */}
