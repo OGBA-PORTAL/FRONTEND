@@ -1,0 +1,46 @@
+
+> ogba-portal-frontend@0.1.0 build
+> next build
+
+▲ Next.js 16.1.6 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 4.1s
+  Running TypeScript ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/22) ...
+  Generating static pages using 11 workers (5/22) 
+  Generating static pages using 11 workers (10/22) 
+  Generating static pages using 11 workers (16/22) 
+✓ Generating static pages using 11 workers (22/22) in 798.1ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /auth
+├ ○ /dashboard
+├ ○ /dashboard/admin
+├ ○ /dashboard/admin/churches
+├ ○ /dashboard/admin/exams
+├ ƒ /dashboard/admin/exams/[id]
+├ ○ /dashboard/admin/profile
+├ ○ /dashboard/admin/results
+├ ○ /dashboard/admin/settings
+├ ○ /dashboard/admin/users
+├ ○ /dashboard/profile
+├ ○ /dashboard/student
+├ ○ /dashboard/student/exams
+├ ƒ /dashboard/student/exams/[examId]/take
+├ ○ /dashboard/student/profile
+├ ○ /dashboard/student/results
+├ ○ /exam
+├ ○ /exam/exam_id
+├ ○ /exam/submit
+└ ○ /login
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
