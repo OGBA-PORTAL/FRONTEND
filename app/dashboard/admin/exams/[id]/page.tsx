@@ -244,13 +244,13 @@ export default function ExamDetailPage() {
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2">{q.text}</p>
                                             <div className="grid grid-cols-2 gap-1.5">
-                                                {(['A', 'B', 'C', 'D'] as const).map(opt => (
+                                                {(['A', 'B', 'C', 'D'] as const).map((opt, optIndex) => (
                                                     <div key={opt} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs ${q.correctAnswer === opt
                                                         ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-semibold'
                                                         : 'bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400'
                                                         }`}>
                                                         <span className="font-bold">{opt}.</span>
-                                                        <span>{(q.options as Record<string, string>)[opt]}</span>
+                                                        <span>{Array.isArray(q.options) ? q.options[optIndex] : (q.options as Record<string, string>)[opt]}</span>
                                                         {q.correctAnswer === opt && <CheckCircle className="w-3 h-3 ml-auto" />}
                                                     </div>
                                                 ))}

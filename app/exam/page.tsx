@@ -3,7 +3,7 @@ import Link from 'next/link'
 
 const page = () => {
   return (
-      <div className="bg-background-light dark:bg-background-dark text-slate-900 min-h-screen">
+    <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
       <div className="sticky top-0 z-50 bg-royal-blue text-[#f9d406] py-3 px-6 shadow-md border-b-4 border-[#f9d406]">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -67,26 +67,26 @@ const page = () => {
           </div>
         </header>
 
-       
 
-          <div className="flex items-center justify-center gap-2 mt-12 py-6">
-            <button className="size-10 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-royal-blue hover:bg-slate-50">
-              <span className="material-symbols-outlined">chevron_left</span>
-            </button>
-            <button className="size-10 flex items-center justify-center rounded-lg border border-slate-200 bg-white dark:bg-slate-900 text-slate-600 font-semibold hover:border-[#f9d406]">1</button>
-            <button className="size-10 flex items-center justify-center rounded-lg border border-slate-200 bg-white dark:bg-slate-900 text-slate-600 font-semibold hover:border-[#f9d406]">2</button>
-            <button className="size-10 flex items-center justify-center rounded-lg border-2 border-royal-blue bg-royal-blue text-[#f9d406] font-bold">3</button>
-            <button className="size-10 flex items-center justify-center rounded-lg border border-slate-200 bg-white dark:bg-slate-900 text-slate-600 font-semibold hover:border-[#f9d406]">4</button>
-            <button className="size-10 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-royal-blue hover:bg-slate-50">
-              <span className="material-symbols-outlined">chevron_right</span>
-            </button>
-          </div>
-        
+
+        <div className="flex items-center justify-center gap-2 mt-12 py-6">
+          <button className="size-10 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-royal-blue hover:bg-slate-50">
+            <span className="material-symbols-outlined">chevron_left</span>
+          </button>
+          <button className="size-10 flex items-center justify-center rounded-lg border border-slate-200 bg-white dark:bg-slate-900 text-slate-600 font-semibold hover:border-[#f9d406]">1</button>
+          <button className="size-10 flex items-center justify-center rounded-lg border border-slate-200 bg-white dark:bg-slate-900 text-slate-600 font-semibold hover:border-[#f9d406]">2</button>
+          <button className="size-10 flex items-center justify-center rounded-lg border-2 border-royal-blue bg-royal-blue text-[#f9d406] font-bold">3</button>
+          <button className="size-10 flex items-center justify-center rounded-lg border border-slate-200 bg-white dark:bg-slate-900 text-slate-600 font-semibold hover:border-[#f9d406]">4</button>
+          <button className="size-10 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-royal-blue hover:bg-slate-50">
+            <span className="material-symbols-outlined">chevron_right</span>
+          </button>
+        </div>
+
 
         <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-8">
           <div className="max-w-xl mx-auto text-center">
             <p className="text-sm text-slate-500 mb-6 font-medium">Please review all your answers before submitting. Once submitted, you cannot change your responses.</p>
-        <Link href="/exam/submit">    <button 
+            <Link href="/exam/submit">    <button
               className="w-full bg-[#f9d406] hover:bg-[#e6c405] text-royal-blue font-bold text-lg py-5 rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-3"
             >
               <span className="material-symbols-outlined font-bold">send</span>

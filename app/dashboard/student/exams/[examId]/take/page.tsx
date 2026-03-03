@@ -40,7 +40,7 @@ const ExamTimer = ({ endTime, onExpire }: { endTime: string | null; onExpire: ()
     const isLow = timeLeft < 300; // 5 minutes
 
     return (
-        <div className={`font-mono text-xl font-bold flex items-center gap-2 ${isLow ? 'text-red-500 animate-pulse' : 'text-slate-800'}`}>
+        <div className={`font-mono text-xl font-bold flex items-center gap-2 ${isLow ? 'text-red-500 dark:text-red-400 animate-pulse' : 'text-slate-800 dark:text-slate-200'}`}>
             <Timer className="w-5 h-5" />
             {hours > 0 && <span>{hours.toString().padStart(2, '0')}:</span>}
             <span>{minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}</span>
@@ -286,7 +286,7 @@ export default function TakeExamPage({ params }: { params: { examId: string } })
                                                 }`}>
                                                 {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
                                             </div>
-                                            <span className={`text-base ${isSelected ? 'font-medium text-slate-800 dark:text-slate-200' : 'text-slate-600 dark:text-slate-400'}`}>
+                                            <span className={`text-base ${isSelected ? 'font-medium text-slate-800 dark:text-slate-200' : 'text-slate-600 dark:text-slate-300'}`}>
                                                 {opt.text}
                                             </span>
                                         </label>

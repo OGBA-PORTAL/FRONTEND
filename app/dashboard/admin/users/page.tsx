@@ -389,8 +389,8 @@ export default function AdminUsersPage() {
                                                     </div>
                                                 )}
 
-                                                {/* Rank Field - Only for RA */}
-                                                {selectedRole === 'RA' && (
+                                                {/* Rank Field - For RA and Church Admin */}
+                                                {(selectedRole === 'RA' || selectedRole === 'CHURCH_ADMIN') && (
                                                     <div className={currentUser?.role === 'CHURCH_ADMIN' ? 'sm:col-span-2' : ''}>
                                                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                                                             Previous Rank (Already Attained) <span className="text-red-500">*</span>
