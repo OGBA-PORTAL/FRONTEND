@@ -251,8 +251,8 @@ export default function AdminUsersPage() {
                                                 </span>
                                             </td>
                                             <td className="px-5 py-4">
-                                                {/* Only SysAdmin/Assoc can suspend/activate */}
-                                                {(currentUser?.role === 'SYSTEM_ADMIN' || currentUser?.role === 'ASSOCIATION_OFFICER') && (
+                                                {/* Only SysAdmin/Assoc can suspend/activate, and users cannot suspend themselves */}
+                                                {(currentUser?.role === 'SYSTEM_ADMIN' || currentUser?.role === 'ASSOCIATION_OFFICER') && user.id !== currentUser?.id && (
                                                     <div className="flex items-center gap-1 justify-end">
                                                         {user.status !== 'ACTIVE' ? (
                                                             <button onClick={() => statusMutation.mutate({ id: user.id, status: 'ACTIVE' })}
