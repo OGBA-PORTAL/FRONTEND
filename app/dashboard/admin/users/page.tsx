@@ -11,7 +11,7 @@ import { z } from 'zod';
 import {
     Users, Plus, Search, Filter, MoreVertical,
     CheckCircle, XCircle, Loader2, X, UserPlus,
-    Shield, BookOpen, Building2, ChevronRight, GraduationCap
+    Shield, BookOpen, Building2, ChevronRight, GraduationCap, AlertCircle
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -56,6 +56,7 @@ export default function AdminUsersPage() {
     const [roleFilter, setRoleFilter] = useState('');
     const [showCreate, setShowCreate] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
+    const [confirmAction, setConfirmAction] = useState<{ id: string, name: string, status: 'ACTIVE' | 'SUSPENDED', actionText: string } | null>(null);
 
     // Queries
     const { data: users = [], isLoading } = useQuery<User[]>({
@@ -127,7 +128,10 @@ export default function AdminUsersPage() {
     const statusMutation = useMutation({
         mutationFn: ({ id, status }: { id: string; status: string }) =>
             api.patch(`/users/${id}/status`, { status }),
-        onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['admin-users'] });
+            setConfirmAction(null);
+        }
     });
 
     const filtered = users.filter(u => {
@@ -255,12 +259,12 @@ export default function AdminUsersPage() {
                                                 {(currentUser?.role === 'SYSTEM_ADMIN' || currentUser?.role === 'ASSOCIATION_OFFICER') && user.id !== currentUser?.id && (
                                                     <div className="flex items-center gap-1 justify-end">
                                                         {user.status !== 'ACTIVE' ? (
-                                                            <button onClick={() => statusMutation.mutate({ id: user.id, status: 'ACTIVE' })}
+                                                            <button onClick={() => setConfirmAction({ id: user.id, name: `${user.firstName} ${user.lastName}`, status: 'ACTIVE', actionText: 'Activate' })}
                                                                 className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors">
                                                                 Activate
                                                             </button>
                                                         ) : (
-                                                            <button onClick={() => statusMutation.mutate({ id: user.id, status: 'SUSPENDED' })}
+                                                            <button onClick={() => setConfirmAction({ id: user.id, name: `${user.firstName} ${user.lastName}`, status: 'SUSPENDED', actionText: 'Suspend' })}
                                                                 className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">
                                                                 Suspend
                                                             </button>
@@ -437,6 +441,48 @@ export default function AdminUsersPage() {
                                     </button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Confirmation Modal */}
+            {confirmAction && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col p-6 animate-in fade-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-800">
+                        <div className="flex flex-col items-center text-center space-y-4">
+                            <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-inner ${confirmAction.status === 'SUSPENDED' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30'}`}>
+                                <AlertCircle className={`w-8 h-8 ${confirmAction.status === 'SUSPENDED' ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`} />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                                    Are you absolutely sure?
+                                </h3>
+                                <p className="text-slate-500 dark:text-slate-400 text-sm mt-3 leading-relaxed">
+                                    This action will <strong className={confirmAction.status === 'SUSPENDED' ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}>{confirmAction.actionText.toLowerCase()}</strong> the account for <br />
+                                    <strong className="text-slate-800 dark:text-slate-200">{confirmAction.name}</strong>.
+                                </p>
+                                {confirmAction.status === 'SUSPENDED' && (
+                                    <p className="text-xs text-red-500/80 dark:text-red-400/80 font-medium mt-3 bg-red-50 dark:bg-red-900/10 p-2.5 rounded-lg border border-red-100 dark:border-red-900/30 inline-block font-mono">
+                                        They will immediately lose access to the portal until reactivated.
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 mt-8">
+                            <button onClick={() => setConfirmAction(null)}
+                                className="flex-1 py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                Cancel
+                            </button>
+                            <button onClick={() => {
+                                statusMutation.mutate({ id: confirmAction.id, status: confirmAction.status });
+                            }}
+                                disabled={statusMutation.isPending}
+                                className={`flex-1 py-3 px-4 rounded-xl text-white font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90 disabled:opacity-60 shadow-lg ${confirmAction.status === 'SUSPENDED' ? 'bg-red-600 hover:bg-red-700 shadow-red-500/25' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/25'
+                                    }`}>
+                                {statusMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : confirmAction.actionText}
+                            </button>
                         </div>
                     </div>
                 </div>
