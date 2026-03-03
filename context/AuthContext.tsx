@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { User, UserRole } from '@/lib/types';
 
@@ -22,6 +23,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [token, setToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
+    const queryClient = useQueryClient();
 
     // Fetch current user on mount
     const fetchMe = useCallback(async () => {
@@ -71,6 +73,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         localStorage.removeItem('token');
         setToken(null);
         setUser(null);
+        queryClient.clear();
         router.push('/login');
     };
 
