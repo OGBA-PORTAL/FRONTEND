@@ -49,8 +49,8 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         const isLeftSwipe = distance > minSwipeDistance;
         const isRightSwipe = distance < -minSwipeDistance;
 
-        // Only process swipe-to-open if we swipe right from the left edge of the screen
-        if (isRightSwipe && touchStart < 50 && !mobileOpen) {
+        // Process swipe-to-open if we swipe right from anywhere on the screen
+        if (isRightSwipe && !mobileOpen) {
             setMobileOpen(true);
         }
         // Process swipe-to-close if we swipe left
@@ -82,7 +82,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             <aside
                 className={`
                     fixed inset-y-0 left-0 z-30 flex flex-col
-                    transition-all duration-300 ease-in-out
+                    transition-all duration-500 ease-out
                     lg:relative lg:translate-x-0
                     ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
                     ${collapsed ? 'lg:w-[72px]' : 'lg:w-64'}
