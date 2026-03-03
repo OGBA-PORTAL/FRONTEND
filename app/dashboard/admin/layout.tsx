@@ -29,6 +29,38 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [collapsed, setCollapsed] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
 
+    // Swipe gesture states
+    const [touchStart, setTouchStart] = useState<number | null>(null);
+    const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+    // Minimum swipe distance (in px)
+    const minSwipeDistance = 50;
+
+    const onTouchStart = (e: React.TouchEvent) => {
+        setTouchEnd(null);
+        setTouchStart(e.targetTouches[0].clientX);
+    };
+
+    const onTouchMove = (e: React.TouchEvent) => {
+        setTouchEnd(e.targetTouches[0].clientX);
+    };
+
+    const onTouchEndHandler = () => {
+        if (!touchStart || !touchEnd) return;
+        const distance = touchStart - touchEnd;
+        const isLeftSwipe = distance > minSwipeDistance;
+        const isRightSwipe = distance < -minSwipeDistance;
+
+        // Only process swipe-to-open if we swipe right from the left edge of the screen
+        if (isRightSwipe && touchStart < 50 && !mobileOpen) {
+            setMobileOpen(true);
+        }
+        // Process swipe-to-close if we swipe left
+        if (isLeftSwipe && mobileOpen) {
+            setMobileOpen(false);
+        }
+    };
+
     const isActive = (href: string, exact?: boolean) =>
         exact ? pathname === href : pathname.startsWith(href);
 
@@ -36,7 +68,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const currentPage = navItems.find(n => isActive(n.href, n.exact))?.label ?? 'Dashboard';
 
     return (
-        <div className="flex h-screen bg-[#f0f4ff] dark:bg-slate-950 overflow-hidden transition-colors">
+        <div
+            className="flex h-screen bg-[#f0f4ff] dark:bg-slate-950 overflow-hidden transition-colors"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEndHandler}
+        >
             {/* Mobile Overlay */}
             {mobileOpen && (
                 <div className="fixed inset-0 bg-black/60 z-20 lg:hidden backdrop-blur-sm"
