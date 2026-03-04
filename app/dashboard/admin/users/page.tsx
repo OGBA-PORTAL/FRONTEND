@@ -11,7 +11,7 @@ import { z } from 'zod';
 import {
     Users, Plus, Search, Filter, MoreVertical,
     CheckCircle, XCircle, Loader2, X, UserPlus,
-    Shield, BookOpen, Building2, ChevronRight, GraduationCap, AlertCircle
+    Shield, BookOpen, Building2, ChevronRight, GraduationCap, AlertCircle, Trash2, UserCog
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -57,6 +57,8 @@ export default function AdminUsersPage() {
     const [showCreate, setShowCreate] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
     const [confirmAction, setConfirmAction] = useState<{ id: string, name: string, status: 'ACTIVE' | 'SUSPENDED', actionText: string } | null>(null);
+    const [deleteConfirm, setDeleteConfirm] = useState<{ id: string, name: string, role: string } | null>(null);
+    const [roleMenuOpen, setRoleMenuOpen] = useState<string | null>(null); // userId whose role menu is open
 
     // Queries
     const { data: users = [], isLoading } = useQuery<User[]>({
@@ -133,6 +135,58 @@ export default function AdminUsersPage() {
             setConfirmAction(null);
         }
     });
+
+    const deleteMutation = useMutation({
+        mutationFn: (id: string) => api.delete(`/users/${id}`),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['admin-users'] });
+            setDeleteConfirm(null);
+        },
+        onError: (err: any) => {
+            setDeleteConfirm(null);
+            setApiError(err?.response?.data?.message ?? 'Failed to delete user');
+        }
+    });
+
+    // Determine if current user is allowed to delete the given user
+    const canDeleteUser = (targetRole: string) => {
+        const allowedDeletions: Record<string, string[]> = {
+            SYSTEM_ADMIN: ['ASSOCIATION_OFFICER', 'CHURCH_ADMIN', 'RA'],
+            ASSOCIATION_OFFICER: ['CHURCH_ADMIN', 'RA'],
+            CHURCH_ADMIN: [],
+        };
+        return (allowedDeletions[currentUser?.role ?? ''] ?? []).includes(targetRole);
+    };
+
+    const changeRoleMutation = useMutation({
+        mutationFn: ({ id, role }: { id: string; role: string }) =>
+            api.patch(`/users/${id}/role`, { role }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['admin-users'] });
+            setRoleMenuOpen(null);
+        },
+        onError: (err: any) => {
+            setRoleMenuOpen(null);
+            setApiError(err?.response?.data?.message ?? 'Failed to change role');
+        }
+    });
+
+    // Get the roles the current admin can assign to a target role
+    const getRoleOptions = (targetRole: string): { value: string; label: string }[] => {
+        const allOptions = [
+            { value: 'RA', label: 'RA Member' },
+            { value: 'CHURCH_ADMIN', label: 'Church Admin' },
+            { value: 'ASSOCIATION_OFFICER', label: 'Assoc. Officer' },
+        ];
+        const manageable: Record<string, string[]> = {
+            SYSTEM_ADMIN: ['RA', 'CHURCH_ADMIN', 'ASSOCIATION_OFFICER'],
+            ASSOCIATION_OFFICER: ['RA', 'CHURCH_ADMIN'],
+            CHURCH_ADMIN: [],
+        };
+        const allowed = manageable[currentUser?.role ?? ''] ?? [];
+        if (!allowed.includes(targetRole)) return []; // can't manage this role at all
+        return allOptions.filter(o => o.value !== targetRole && allowed.includes(o.value));
+    };
 
     const filtered = users.filter(u => {
         const matchSearch = search === '' ||
@@ -268,6 +322,47 @@ export default function AdminUsersPage() {
                                                                 className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">
                                                                 Suspend
                                                             </button>
+                                                        )}
+                                                        {/* Delete button */}
+                                                        {canDeleteUser(user.role) && (
+                                                            <button
+                                                                onClick={() => setDeleteConfirm({ id: user.id, name: `${user.firstName} ${user.lastName}`, role: user.role })}
+                                                                className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors ml-1"
+                                                                title="Delete account permanently"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
+                                                        {/* Change Role button */}
+                                                        {getRoleOptions(user.role).length > 0 && (
+                                                            <div className="relative ml-1">
+                                                                <button
+                                                                    onClick={() => setRoleMenuOpen(roleMenuOpen === user.id ? null : user.id)}
+                                                                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
+                                                                    title="Change role"
+                                                                >
+                                                                    <UserCog className="w-3.5 h-3.5" />
+                                                                </button>
+                                                                {roleMenuOpen === user.id && (
+                                                                    <>
+                                                                        <div className="fixed inset-0 z-30" onClick={() => setRoleMenuOpen(null)} />
+                                                                        <div className="absolute right-0 top-full mt-1.5 z-40 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-1.5 min-w-[160px]">
+                                                                            <p className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Change role to</p>
+                                                                            {getRoleOptions(user.role).map(option => (
+                                                                                <button
+                                                                                    key={option.value}
+                                                                                    disabled={changeRoleMutation.isPending}
+                                                                                    onClick={() => changeRoleMutation.mutate({ id: user.id, role: option.value })}
+                                                                                    className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-700 dark:hover:text-indigo-400 transition-colors flex items-center gap-2 disabled:opacity-50"
+                                                                                >
+                                                                                    {changeRoleMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCog className="w-3 h-3 text-indigo-400" />}
+                                                                                    {option.label}
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    </>
+                                                                )}
+                                                            </div>
                                                         )}
                                                     </div>
                                                 )}
@@ -482,6 +577,45 @@ export default function AdminUsersPage() {
                                 className={`flex-1 py-3 px-4 rounded-xl text-white font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90 disabled:opacity-60 shadow-lg ${confirmAction.status === 'SUSPENDED' ? 'bg-red-600 hover:bg-red-700 shadow-red-500/25' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/25'
                                     }`}>
                                 {statusMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : confirmAction.actionText}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirm && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col p-6 animate-in fade-in zoom-in-95 duration-200 border-2 border-red-200 dark:border-red-900/50">
+                        <div className="flex flex-col items-center text-center space-y-4">
+                            <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shadow-inner">
+                                <Trash2 className="w-8 h-8 text-red-600 dark:text-red-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                                    Delete Account Permanently
+                                </h3>
+                                <p className="text-slate-500 dark:text-slate-400 text-sm mt-3 leading-relaxed">
+                                    You are about to permanently delete the account for <br />
+                                    <strong className="text-slate-800 dark:text-slate-200">{deleteConfirm.name}</strong>.
+                                </p>
+                                <p className="text-xs font-mono font-semibold text-red-600 dark:text-red-400 mt-4 bg-red-50 dark:bg-red-900/20 px-3 py-2.5 rounded-lg border border-red-200 dark:border-red-800/50 leading-relaxed">
+                                    ⚠️ This action CANNOT be undone. All exam records and data associated with this account will be permanently lost.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 mt-8">
+                            <button onClick={() => setDeleteConfirm(null)}
+                                disabled={deleteMutation.isPending}
+                                className="flex-1 py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-60">
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => deleteMutation.mutate(deleteConfirm.id)}
+                                disabled={deleteMutation.isPending}
+                                className="flex-1 py-3 px-4 rounded-xl text-white font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90 disabled:opacity-60 shadow-lg bg-red-600 hover:bg-red-700 shadow-red-500/25">
+                                {deleteMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Trash2 className="w-4 h-4" /> Delete Permanently</>}
                             </button>
                         </div>
                     </div>
