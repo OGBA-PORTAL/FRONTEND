@@ -41,11 +41,12 @@ export interface Exam {
     duration: number;
     passMark: number;
     questionCount: number;
-    status: 'DRAFT' | 'PUBLISHED' | 'COMPLETED';
+    status: 'DRAFT' | 'PUBLISHED' | 'PAUSED' | 'COMPLETED';
     resultsReleased: boolean;
     description?: string;
     examDate?: string;
     ranks?: Rank;
+    attemptCount?: number;
 }
 
 export interface Question {

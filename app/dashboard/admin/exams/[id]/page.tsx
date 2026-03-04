@@ -14,6 +14,7 @@ import {
     Clock, Users, CheckCircle, Send, Award, X
 } from 'lucide-react';
 import Link from 'next/link';
+import { useToast } from '@/context/ToastContext';
 
 const questionSchema = z.object({
     text: z.string().min(5, 'Question text required'),
@@ -33,6 +34,7 @@ export default function ExamDetailPage() {
     const examId = params.id as string;
     const [showAddQ, setShowAddQ] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
+    const toast = useToast();
 
     const { data: exam, isLoading } = useQuery<Exam>({
         queryKey: ['exam', examId],
@@ -67,28 +69,40 @@ export default function ExamDetailPage() {
             reset();
             setShowAddQ(false);
             setApiError(null);
+            toast.success('Question Added', 'New question has been saved to the exam.');
         },
-        onError: (err: any) => setApiError(err?.response?.data?.message ?? 'Failed to add question'),
+        onError: (err: any) => {
+            const msg = err?.response?.data?.message ?? 'Failed to add question';
+            setApiError(msg);
+            toast.error('Failed to Add Question', msg);
+        },
     });
 
     const batchMutation = useMutation({
         mutationFn: (data: { questions: any[] }) => api.post(`/exams/${examId}/questions/batch`, data),
         onSuccess: (res) => {
             qc.invalidateQueries({ queryKey: ['exam-questions', examId] });
-            window.alert(`Successfully imported ${res.data.count} questions!`);
+            toast.success('Questions Imported', `Successfully imported ${res.data.count} questions!`);
         },
-        onError: (err: any) => window.alert(err?.response?.data?.message ?? 'Failed to import questions'),
+        onError: (err: any) => toast.error('Import Failed', err?.response?.data?.message ?? 'Failed to import questions'),
     });
 
     const deleteQuestionMutation = useMutation({
         mutationFn: (qId: string) => api.delete(`/exams/${examId}/questions/${qId}`),
-        onSuccess: () => qc.invalidateQueries({ queryKey: ['exam-questions', examId] }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['exam-questions', examId] });
+            toast.success('Question Deleted', 'The question has been removed from the exam.');
+        },
+        onError: (err: any) => toast.error('Delete Failed', err?.response?.data?.message ?? 'Could not delete question'),
     });
 
     const publishMutation = useMutation({
         mutationFn: () => api.patch(`/exams/${examId}/status`, { status: 'PUBLISHED' }),
-        onSuccess: () => qc.invalidateQueries({ queryKey: ['exam', examId] }),
-        onError: (err: any) => window.alert(err?.response?.data?.message ?? 'Failed to publish exam'),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['exam', examId] });
+            toast.success('Exam Published', 'The exam is now live and visible to eligible students.');
+        },
+        onError: (err: any) => toast.error('Publish Failed', err?.response?.data?.message ?? 'Failed to publish exam'),
     });
 
     const correctAnswer = watch('correctAnswer');

@@ -61,6 +61,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const role = data.user.role as UserRole;
         if (role === 'SYSTEM_ADMIN' || role === 'ASSOCIATION_OFFICER') {
             router.push('/dashboard/admin');
+        } else if (role === 'CHURCH_ADMIN') {
+            router.push('/dashboard/church-admin');
         } else {
             router.push('/dashboard/student');
         }

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, use } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { Loader2, Timer, CheckCircle, Save, AlertTriangle, ChevronRight, ChevronLeft, LayoutGrid } from 'lucide-react';
 import { StudentQuestion, ExamAttemptResponse } from '@/lib/types';
+import { useToast } from '@/context/ToastContext';
 
 // Timer Component
 const ExamTimer = ({ endTime, onExpire }: { endTime: string | null; onExpire: () => void }) => {
@@ -48,9 +49,11 @@ const ExamTimer = ({ endTime, onExpire }: { endTime: string | null; onExpire: ()
     );
 };
 
-export default function TakeExamPage({ params }: { params: { examId: string } }) {
+export default function TakeExamPage({ params }: { params: Promise<{ examId: string }> }) {
+    const { examId } = use(params); // Next.js 15: params is a Promise, must unwrap
     const router = useRouter();
     const qc = useQueryClient();
+    const toast = useToast();
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [attemptData, setAttemptData] = useState<ExamAttemptResponse | null>(null);
@@ -67,7 +70,7 @@ export default function TakeExamPage({ params }: { params: { examId: string } })
         const startExam = async () => {
             try {
                 // Call start/resume endpoint
-                const res = await api.post(`/exams/${params.examId}/attempt`);
+                const res = await api.post(`/exams/${examId}/attempt`);
                 if (!isMounted) return;
 
                 const data = res.data.data as ExamAttemptResponse;
@@ -91,7 +94,7 @@ export default function TakeExamPage({ params }: { params: { examId: string } })
                 const msg = err?.response?.data?.message || 'Failed to load exam';
                 setError(msg);
                 setIsLoading(false);
-
+                toast.error('Could Not Load Exam', msg);
                 // If attempt already submitted, redirect
                 if (msg.includes('already taken') || msg.includes('submitted')) {
                     setTimeout(() => router.push('/dashboard/student/results'), 2000);
@@ -101,7 +104,7 @@ export default function TakeExamPage({ params }: { params: { examId: string } })
 
         startExam();
         return () => { isMounted = false; };
-    }, [params.examId, router]);
+    }, [examId, router]);
 
     // Save Progress Mutation
     const saveMutation = useMutation({
@@ -143,11 +146,14 @@ export default function TakeExamPage({ params }: { params: { examId: string } })
         },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['my-attempts'] });
+            toast.success('Exam Submitted!', 'Your answers have been saved. Redirecting to your results...');
             router.push('/dashboard/student/results');
         },
         onError: (err: any) => {
             console.error("Failed to submit exam", err);
-            setError(err?.response?.data?.message || 'Failed to submit exam. Please try again.');
+            const msg = err?.response?.data?.message || 'Failed to submit exam. Please try again.';
+            setError(msg);
+            toast.error('Submission Failed', msg);
             setIsSubmitting(false);
         }
     });

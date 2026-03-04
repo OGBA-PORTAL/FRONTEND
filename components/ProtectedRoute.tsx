@@ -23,8 +23,14 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
         }
 
         if (allowedRoles && !hasRole(...allowedRoles)) {
-            // Redirect to appropriate dashboard if wrong role
-            router.replace('/dashboard/student');
+            // Redirect to the appropriate dashboard based on role
+            if (hasRole('SYSTEM_ADMIN', 'ASSOCIATION_OFFICER')) {
+                router.replace('/dashboard/admin');
+            } else if (hasRole('CHURCH_ADMIN')) {
+                router.replace('/dashboard/church-admin');
+            } else {
+                router.replace('/dashboard/student');
+            }
         }
     }, [isAuthenticated, isLoading, allowedRoles, hasRole, router]);
 

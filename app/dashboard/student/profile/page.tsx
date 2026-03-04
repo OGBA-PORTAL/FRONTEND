@@ -9,6 +9,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { User, Shield, Mail, Phone, Lock, Loader2, CheckCircle, Eye, EyeOff, Award } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 const profileSchema = z.object({
     firstName: z.string().min(1, 'Required'),
@@ -31,6 +32,7 @@ type PasswordForm = z.infer<typeof passwordSchema>;
 
 export default function StudentProfilePage() {
     const { user } = useAuth();
+    const toast = useToast();
     const [profileSuccess, setProfileSuccess] = useState(false);
     const [passwordSuccess, setPasswordSuccess] = useState(false);
     const [showCurrent, setShowCurrent] = useState(false);
@@ -54,14 +56,33 @@ export default function StudentProfilePage() {
 
     const profileMutation = useMutation({
         mutationFn: (data: ProfileForm) => api.patch('/users/me', data),
-        onSuccess: () => { setProfileSuccess(true); setProfileError(null); setTimeout(() => setProfileSuccess(false), 3000); },
-        onError: (err: any) => setProfileError(err?.response?.data?.message ?? 'Update failed'),
+        onSuccess: () => {
+            setProfileSuccess(true);
+            setProfileError(null);
+            setTimeout(() => setProfileSuccess(false), 3000);
+            toast.success('Profile Updated', 'Your profile information has been saved.');
+        },
+        onError: (err: any) => {
+            const msg = err?.response?.data?.message ?? 'Update failed';
+            setProfileError(msg);
+            toast.error('Update Failed', msg);
+        },
     });
 
     const passwordMutation = useMutation({
         mutationFn: (data: PasswordForm) => api.patch('/users/me/password', data),
-        onSuccess: () => { setPasswordSuccess(true); setPasswordError(null); resetPassword(); setTimeout(() => setPasswordSuccess(false), 3000); },
-        onError: (err: any) => setPasswordError(err?.response?.data?.message ?? 'Password change failed'),
+        onSuccess: () => {
+            setPasswordSuccess(true);
+            setPasswordError(null);
+            resetPassword();
+            setTimeout(() => setPasswordSuccess(false), 3000);
+            toast.success('Password Changed', 'Your password has been updated successfully.');
+        },
+        onError: (err: any) => {
+            const msg = err?.response?.data?.message ?? 'Password change failed';
+            setPasswordError(msg);
+            toast.error('Password Change Failed', msg);
+        },
     });
 
     const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase();

@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff, Shield, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 import logo from '../assets/ralogo.png';
 
 const loginSchema = z.object({
@@ -21,6 +22,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const { login } = useAuth();
+  const toast = useToast();
 
   const {
     register,
@@ -34,8 +36,11 @@ export default function LoginPage() {
     setApiError(null);
     try {
       await login(data.raNumber, data.password);
+      // Redirect is handled by AuthContext, toast is optional here
     } catch (err: any) {
-      setApiError(err?.response?.data?.message || 'Login failed. Please try again.');
+      const msg = err?.response?.data?.message || 'Login failed. Please check your credentials.';
+      setApiError(msg);
+      toast.error('Login Failed', msg);
     }
   };
 

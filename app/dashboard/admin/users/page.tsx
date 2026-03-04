@@ -14,6 +14,7 @@ import {
     Shield, BookOpen, Building2, ChevronRight, GraduationCap, AlertCircle, Trash2, UserCog
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 
 // Schema with conditional validation
 const createUserSchema = z.object({
@@ -52,6 +53,7 @@ const statusColors: Record<string, string> = {
 export default function AdminUsersPage() {
     const { user: currentUser } = useAuth();
     const qc = useQueryClient();
+    const toast = useToast();
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
     const [showCreate, setShowCreate] = useState(false);
@@ -118,20 +120,32 @@ export default function AdminUsersPage() {
 
     const createMutation = useMutation({
         mutationFn: (data: CreateUserForm) => api.post('/auth/register', data),
-        onSuccess: () => {
+        onSuccess: (res) => {
             qc.invalidateQueries({ queryKey: ['admin-users'] });
             setShowCreate(false);
             reset();
             setApiError(null);
+            const name = res?.data?.data?.user ? `${res.data.data.user.firstName} ${res.data.data.user.lastName}` : 'New member';
+            toast.success('Member Registered', `${name}'s account has been created successfully.`);
         },
-        onError: (err: any) => setApiError(err?.response?.data?.message ?? 'Failed to create user'),
+        onError: (err: any) => {
+            const msg = err?.response?.data?.message ?? 'Failed to create user';
+            setApiError(msg);
+            toast.error('Registration Failed', msg);
+        },
     });
 
     const statusMutation = useMutation({
         mutationFn: ({ id, status }: { id: string; status: string }) =>
             api.patch(`/users/${id}/status`, { status }),
-        onSuccess: () => {
+        onSuccess: (_, vars) => {
             qc.invalidateQueries({ queryKey: ['admin-users'] });
+            const action = vars.status === 'ACTIVE' ? 'Activated' : 'Suspended';
+            toast.success(`Account ${action}`, `The user account has been ${action.toLowerCase()} successfully.`);
+            setConfirmAction(null);
+        },
+        onError: (err: any) => {
+            toast.error('Action Failed', err?.response?.data?.message ?? 'Could not update account status.');
             setConfirmAction(null);
         }
     });
@@ -141,10 +155,13 @@ export default function AdminUsersPage() {
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['admin-users'] });
             setDeleteConfirm(null);
+            toast.success('Account Deleted', 'The user account has been permanently deleted.');
         },
         onError: (err: any) => {
             setDeleteConfirm(null);
-            setApiError(err?.response?.data?.message ?? 'Failed to delete user');
+            const msg = err?.response?.data?.message ?? 'Failed to delete user';
+            setApiError(msg);
+            toast.error('Deletion Failed', msg);
         }
     });
 
@@ -161,13 +178,17 @@ export default function AdminUsersPage() {
     const changeRoleMutation = useMutation({
         mutationFn: ({ id, role }: { id: string; role: string }) =>
             api.patch(`/users/${id}/role`, { role }),
-        onSuccess: () => {
+        onSuccess: (_, vars) => {
             qc.invalidateQueries({ queryKey: ['admin-users'] });
             setRoleMenuOpen(null);
+            const roleLabel = vars.role === 'RA' ? 'RA Member' : vars.role === 'CHURCH_ADMIN' ? 'Church Admin' : 'Assoc. Officer';
+            toast.success('Role Updated', `User role has been changed to ${roleLabel}.`);
         },
         onError: (err: any) => {
             setRoleMenuOpen(null);
-            setApiError(err?.response?.data?.message ?? 'Failed to change role');
+            const msg = err?.response?.data?.message ?? 'Failed to change role';
+            setApiError(msg);
+            toast.error('Role Change Failed', msg);
         }
     });
 

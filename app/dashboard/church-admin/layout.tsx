@@ -4,74 +4,89 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import {
-    LayoutDashboard, BookOpen, Award, User,
+    LayoutDashboard, BookOpen, Award, User, Users,
     LogOut, ChevronRight, Menu, X, Bell, ChevronDown,
-    PanelLeftClose, PanelLeftOpen, UserCircle
+    PanelLeftClose, PanelLeftOpen, UserCircle, Shield
 } from 'lucide-react';
 import { useState } from 'react';
 import Image from 'next/image';
 import logo from '@/app/assets/ralogo.png';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
-const navItems = [
-    { href: '/dashboard/student', label: 'My Dashboard', icon: LayoutDashboard, exact: true },
-    { href: '/dashboard/student/exams', label: 'My Exams', icon: BookOpen },
-    { href: '/dashboard/student/results', label: 'My Results', icon: Award },
-    { href: '/dashboard/student/profile', label: 'My Profile', icon: User },
+// ── Nav sections ────────────────────────────────────────────────────────────
+const memberNav = [
+    { href: '/dashboard/church-admin', label: 'My Dashboard', icon: LayoutDashboard, exact: true },
+    { href: '/dashboard/church-admin/exams', label: 'My Exams', icon: BookOpen },
+    { href: '/dashboard/church-admin/results', label: 'My Results', icon: Award },
+    { href: '/dashboard/church-admin/profile', label: 'My Profile', icon: User },
 ];
 
-export default function StudentLayout({ children }: { children: React.ReactNode }) {
+const adminNav = [
+    { href: '/dashboard/church-admin/members', label: 'Church Members', icon: Users },
+];
+
+export default function ChurchAdminLayout({ children }: { children: React.ReactNode }) {
     const { user, logout } = useAuth();
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [collapsed, setCollapsed] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
 
-    // Swipe gesture states
     const [touchStart, setTouchStart] = useState<number | null>(null);
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
-
-    // Minimum swipe distance (in px)
     const minSwipeDistance = 50;
 
-    const onTouchStart = (e: React.TouchEvent) => {
-        setTouchEnd(null);
-        setTouchStart(e.targetTouches[0].clientX);
-    };
-
-    const onTouchMove = (e: React.TouchEvent) => {
-        setTouchEnd(e.targetTouches[0].clientX);
-    };
-
+    const onTouchStart = (e: React.TouchEvent) => { setTouchEnd(null); setTouchStart(e.targetTouches[0].clientX); };
+    const onTouchMove = (e: React.TouchEvent) => setTouchEnd(e.targetTouches[0].clientX);
     const onTouchEndHandler = () => {
         if (!touchStart || !touchEnd) return;
-        const distance = touchStart - touchEnd;
-        const isLeftSwipe = distance > minSwipeDistance;
-        const isRightSwipe = distance < -minSwipeDistance;
-
-        // Process swipe-to-open if we swipe right from anywhere on the screen
-        if (isRightSwipe && !mobileOpen) {
-            setMobileOpen(true);
-        }
-        // Process swipe-to-close if we swipe left
-        if (isLeftSwipe && mobileOpen) {
-            setMobileOpen(false);
-        }
+        const d = touchStart - touchEnd;
+        if (d < -minSwipeDistance && !mobileOpen) setMobileOpen(true);
+        if (d > minSwipeDistance && mobileOpen) setMobileOpen(false);
     };
 
     const isActive = (href: string, exact?: boolean) =>
         exact ? pathname === href : pathname.startsWith(href);
 
     const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase();
-    const currentPage = navItems.find(n => isActive(n.href, n.exact))?.label ?? 'Dashboard';
+
+    const allNav = [...memberNav, ...adminNav];
+    const currentPage = allNav.find(n => isActive(n.href, (n as any).exact))?.label ?? 'Dashboard';
+
+    const NavLink = ({ item }: { item: typeof memberNav[0] | typeof adminNav[0] }) => {
+        const active = isActive(item.href, (item as any).exact);
+        return (
+            <Link key={item.href} href={item.href}
+                onClick={() => setMobileOpen(false)}
+                title={collapsed ? item.label : undefined}
+                className={`
+                    flex items-center gap-3 rounded-xl
+                    transition-all duration-200 group relative
+                    ${collapsed ? 'justify-center px-2 py-3' : 'px-3 py-2.5'}
+                    ${active
+                        ? 'bg-white text-blue-900 shadow-lg shadow-blue-900/20'
+                        : 'text-blue-200 hover:bg-white/10 hover:text-white'}
+                `}>
+                {active && !collapsed && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-yellow-400 rounded-r-full" />
+                )}
+                <item.icon style={{ width: '18px', height: '18px', flexShrink: 0 }}
+                    className={active ? 'text-blue-700' : 'text-blue-300 group-hover:text-white'} />
+                {!collapsed && (
+                    <>
+                        <span className={`text-sm font-medium flex-1 ${active ? 'text-blue-900' : ''}`}>{item.label}</span>
+                        {active && <ChevronRight className="w-3.5 h-3.5 text-blue-400" />}
+                    </>
+                )}
+            </Link>
+        );
+    };
 
     return (
         <div
             className="flex h-screen bg-[#f0f4ff] dark:bg-slate-950 overflow-hidden transition-colors"
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onTouchEndHandler}
-        >
+            onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler}>
+
             {/* Mobile Overlay */}
             {mobileOpen && (
                 <div className="fixed inset-0 bg-black/60 z-20 lg:hidden backdrop-blur-sm"
@@ -79,21 +94,20 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             )}
 
             {/* ─── Sidebar ─── */}
-            <aside
-                className={`
-                    fixed inset-y-0 left-0 z-30 flex flex-col
-                    transition-all duration-500 ease-out
-                    lg:relative lg:translate-x-0
-                    ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
-                    ${collapsed ? 'lg:w-[72px]' : 'lg:w-64'}
-                    w-64
-                `}
+            <aside className={`
+                fixed inset-y-0 left-0 z-30 flex flex-col
+                transition-all duration-500 ease-out
+                lg:relative lg:translate-x-0
+                ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
+                ${collapsed ? 'lg:w-[72px]' : 'lg:w-64'}
+                w-64
+            `}
                 style={{
                     background: 'linear-gradient(160deg, #0f2d7a 0%, #1a3fa8 45%, #1e3a8a 100%)',
                     boxShadow: '4px 0 24px rgba(0,0,0,0.25)'
-                }}
-            >
-                {/* Logo + Collapse Toggle */}
+                }}>
+
+                {/* Logo */}
                 <div className={`flex items-center gap-3 px-4 py-5 border-b border-white/10 ${collapsed ? 'justify-center' : ''}`}>
                     {!collapsed && (
                         <>
@@ -105,7 +119,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-white font-bold text-sm leading-tight">OGBA Portal</p>
-                                <p className="text-blue-300 text-xs">Member Portal</p>
+                                <p className="text-blue-300 text-xs">Church Admin</p>
                             </div>
                         </>
                     )}
@@ -117,11 +131,9 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                             </div>
                         </div>
                     )}
-                    <button
-                        onClick={() => setCollapsed(!collapsed)}
+                    <button onClick={() => setCollapsed(!collapsed)}
                         className="hidden lg:flex items-center justify-center w-7 h-7 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-all flex-shrink-0"
-                        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                    >
+                        title={collapsed ? 'Expand' : 'Collapse'}>
                         {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
                     </button>
                     <button onClick={() => setMobileOpen(false)} className="lg:hidden text-white/50 hover:text-white p-1 flex-shrink-0">
@@ -143,17 +155,24 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                                     <p className="text-blue-300 text-xs truncate">{user?.raNumber}</p>
                                 </div>
                             </div>
+                            {/* Church Admin badge */}
+                            <div className="flex items-center gap-2 bg-emerald-400/15 border border-emerald-400/30 rounded-xl px-2.5 py-1.5">
+                                <Shield className="w-3.5 h-3.5 text-emerald-300" />
+                                <div>
+                                    <p className="text-emerald-200 text-xs font-semibold">Church Admin</p>
+                                    {user?.churches && (
+                                        <p className="text-emerald-300/60 text-[10px] truncate">{user.churches.name}</p>
+                                    )}
+                                </div>
+                            </div>
                             {user?.ranks && (
-                                <div className="flex items-center gap-2 bg-yellow-400/15 border border-yellow-400/30 rounded-xl px-2.5 py-1.5">
+                                <div className="flex items-center gap-2 bg-yellow-400/15 border border-yellow-400/30 rounded-xl px-2.5 py-1.5 mt-1.5">
                                     <span className="text-yellow-300 text-sm">🏅</span>
                                     <div>
                                         <p className="text-yellow-200 text-xs font-semibold">{user.ranks.name}</p>
                                         <p className="text-yellow-300/60 text-[10px]">Level {user.ranks.level}</p>
                                     </div>
                                 </div>
-                            )}
-                            {user?.churches && (
-                                <p className="text-blue-300/70 text-[10px] mt-2 truncate">⛪ {user.churches.name}</p>
                             )}
                         </div>
                     </div>
@@ -167,42 +186,20 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                     </div>
                 )}
 
-                {!collapsed && (
-                    <p className="px-5 text-[10px] font-semibold uppercase tracking-widest text-blue-400 mb-2">Menu</p>
-                )}
-
                 {/* Nav */}
                 <nav className="flex-1 px-2 space-y-0.5 overflow-y-auto">
-                    {navItems.map((item) => {
-                        const active = isActive(item.href, item.exact);
-                        return (
-                            <Link key={item.href} href={item.href}
-                                onClick={() => setMobileOpen(false)}
-                                title={collapsed ? item.label : undefined}
-                                className={`
-                                    flex items-center gap-3 rounded-xl
-                                    transition-all duration-200 group relative
-                                    ${collapsed ? 'justify-center px-2 py-3' : 'px-3 py-2.5'}
-                                    ${active
-                                        ? 'bg-white text-blue-900 shadow-lg shadow-blue-900/20'
-                                        : 'text-blue-200 hover:bg-white/10 hover:text-white'
-                                    }
-                                `}
-                            >
-                                {active && !collapsed && (
-                                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-yellow-400 rounded-r-full" />
-                                )}
-                                <item.icon style={{ width: '18px', height: '18px', flexShrink: 0 }}
-                                    className={active ? 'text-blue-700' : 'text-blue-300 group-hover:text-white'} />
-                                {!collapsed && (
-                                    <>
-                                        <span className={`text-sm font-medium flex-1 ${active ? 'text-blue-900' : ''}`}>{item.label}</span>
-                                        {active && <ChevronRight className="w-3.5 h-3.5 text-blue-400" />}
-                                    </>
-                                )}
-                            </Link>
-                        );
-                    })}
+                    {/* Member section */}
+                    {!collapsed && (
+                        <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-blue-400 mb-1 mt-1">Member</p>
+                    )}
+                    {memberNav.map(item => <NavLink key={item.href} item={item} />)}
+
+                    {/* Admin section */}
+                    {!collapsed && (
+                        <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-blue-400 mb-1 mt-3">Admin</p>
+                    )}
+                    {collapsed && <div className="my-2 border-t border-white/10" />}
+                    {adminNav.map(item => <NavLink key={item.href} item={item} />)}
                 </nav>
 
                 {/* Logout */}
@@ -217,7 +214,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                 </div>
             </aside>
 
-            {/* ─── Main ─── */}
+            {/* ─── Main Area ─── */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f0f4ff] dark:bg-slate-950 transition-colors">
                 <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 px-4 sm:px-6 py-3.5 flex items-center gap-3 flex-shrink-0 transition-colors"
                     style={{ boxShadow: '0 1px 12px rgba(0,0,0,0.06)' }}>
@@ -227,13 +224,13 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                     </button>
 
                     <div className="flex items-center gap-2 text-sm min-w-0">
-                        <span className="text-slate-400 dark:text-slate-500 hidden sm:inline">Portal</span>
+                        <span className="text-slate-400 dark:text-slate-500 hidden sm:inline">Church Admin</span>
                         <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 hidden sm:inline" />
                         <span className="text-slate-700 dark:text-slate-200 font-semibold truncate hidden md:inline">{currentPage}</span>
                         {user?.churches?.name && (
                             <>
                                 <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600 hidden md:inline" />
-                                <span className="text-blue-700 dark:text-blue-300 font-bold truncate bg-blue-100 dark:bg-blue-900/40 px-3 py-1 rounded-lg text-sm shadow-sm border border-blue-200 dark:border-blue-800/50">
+                                <span className="text-emerald-700 dark:text-emerald-300 font-bold truncate bg-emerald-100 dark:bg-emerald-900/40 px-3 py-1 rounded-lg text-sm shadow-sm border border-emerald-200 dark:border-emerald-800/50">
                                     ⛪ {user.churches.name}
                                 </span>
                             </>
@@ -245,7 +242,6 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
                     <div className="ml-auto flex items-center gap-2 sm:gap-3">
                         <ThemeToggle />
-
                         <button className="relative w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                             <Bell style={{ width: '18px', height: '18px' }} />
                         </button>
@@ -259,7 +255,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                                 </div>
                                 <div className="hidden sm:block text-left">
                                     <p className="text-slate-800 dark:text-slate-200 text-sm font-semibold leading-tight">{user?.firstName} {user?.lastName}</p>
-                                    <p className="text-slate-400 dark:text-slate-500 text-xs">{user?.ranks?.name ?? 'Member'}</p>
+                                    <p className="text-slate-400 dark:text-slate-500 text-xs">Church Admin</p>
                                 </div>
                                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                             </button>
@@ -267,15 +263,21 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                             {userMenuOpen && (
                                 <>
                                     <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
-                                    <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 py-2 z-50 animate-slide-down">
+                                    <div className="absolute right-0 top-full mt-2 w-52 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 py-2 z-50">
                                         <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
                                             <p className="text-xs text-slate-400">RA Number</p>
                                             <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{user?.raNumber}</p>
+                                            <p className="text-xs text-emerald-500 font-medium mt-0.5">Church Admin</p>
                                         </div>
-                                        <Link href="/dashboard/student/profile" onClick={() => setUserMenuOpen(false)}
+                                        <Link href="/dashboard/church-admin/profile" onClick={() => setUserMenuOpen(false)}
                                             className="w-full flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                                             <UserCircle className="w-4 h-4 text-slate-400" />
                                             My Profile
+                                        </Link>
+                                        <Link href="/dashboard/church-admin/members" onClick={() => setUserMenuOpen(false)}
+                                            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                            <Users className="w-4 h-4 text-slate-400" />
+                                            Church Members
                                         </Link>
                                         <button onClick={() => { setUserMenuOpen(false); logout(); }}
                                             className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">

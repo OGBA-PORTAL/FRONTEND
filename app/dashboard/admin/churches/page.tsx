@@ -5,7 +5,64 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { Church } from '@/lib/types';
 import { useState } from 'react';
-import { Church as ChurchIcon, Search, Users, MapPin, Hash, Loader2, X } from 'lucide-react';
+import { Church as ChurchIcon, Search, Users, MapPin, Hash, Loader2, X, Award, Shield } from 'lucide-react';
+
+function ChurchMembersList({ churchId }: { churchId: string }) {
+    const { data: members, isLoading } = useQuery<any[]>({
+        queryKey: ['admin-users'],
+        queryFn: async () => {
+            const res = await api.get('/users');
+            return res.data.data.users;
+        },
+    });
+
+    if (isLoading) return <div className="py-8 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-blue-500" /></div>;
+
+    // The API might already scope this if we are a church admin, but since we are SYSTEM or ASSOC here, 
+    // it returns all users. We filter manually for this specific church view.
+    const churchMembers = (members || []).filter(m => m.churchId === churchId);
+
+    if (churchMembers.length === 0) {
+        return (
+            <div className="text-center py-8 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                <Users className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No members registered in this church yet</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-2">
+            {churchMembers.map(member => (
+                <div key={member.id} className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors hover:border-blue-200 dark:hover:border-blue-800/50">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm text-white flex-shrink-0"
+                        style={{ background: member.role === 'CHURCH_ADMIN' ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>
+                        {member.firstName?.[0]}{member.lastName?.[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm text-slate-800 dark:text-slate-200 truncate">
+                            {member.firstName} {member.lastName}
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+                            <span>{member.raNumber}</span>
+                            {member.role === 'CHURCH_ADMIN' ? (
+                                <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium"><Shield className="w-3 h-3" />Admin</span>
+                            ) : (
+                                member.ranks && <span className="flex items-center gap-1 text-amber-600 dark:text-amber-500 font-medium"><Award className="w-3 h-3" />{member.ranks.name}</span>
+                            )}
+                        </div>
+                    </div>
+                    <div className={`px-2 py-1 flex-shrink-0 text-[10px] font-bold rounded uppercase tracking-wider ${member.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                            member.status === 'SUSPENDED' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                        }`}>
+                        {member.status}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
 
 export default function AdminChurchesPage() {
     const [search, setSearch] = useState('');
@@ -94,16 +151,19 @@ export default function AdminChurchesPage() {
             {/* Church Detail Modal */}
             {selected && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md transition-colors">
-                        <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col transition-colors">
+                        <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
                                     style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}>
-                                    <ChurchIcon className="w-5 h-5 text-white" />
+                                    <ChurchIcon className="w-6 h-6 text-white" />
                                 </div>
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-slate-200">{selected.name}</h2>
-                                    <p className="text-slate-400 dark:text-slate-500 text-xs font-mono">{selected.code}</p>
+                                    <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 leading-snug">{selected.name}</h2>
+                                    <div className="flex items-center gap-3 mt-1">
+                                        <p className="text-slate-500 dark:text-slate-400 text-sm font-mono flex items-center gap-1"><Hash className="w-3.5 h-3.5" />{selected.code}</p>
+                                        <p className="text-blue-500 text-sm font-medium flex items-center gap-1"><Users className="w-3.5 h-3.5" />Members below</p>
+                                    </div>
                                 </div>
                             </div>
                             <button onClick={() => setSelected(null)}
@@ -111,23 +171,37 @@ export default function AdminChurchesPage() {
                                 <X className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                             </button>
                         </div>
-                        <div className="p-6 space-y-4">
-                            {[
-                                { label: 'Church Code', value: selected.code, mono: true },
-                                { label: 'Address', value: selected.address ?? 'Not provided' },
-                                { label: 'Phone', value: selected.phone ?? 'Not provided' },
-                                { label: 'Email', value: selected.email ?? 'Not provided' },
-                            ].map(({ label, value, mono }) => (
-                                <div key={label} className="flex items-start justify-between gap-4 py-2 border-b border-slate-50 dark:border-slate-800 last:border-0">
-                                    <span className="text-slate-400 dark:text-slate-500 text-sm flex-shrink-0">{label}</span>
-                                    <span className={`text-slate-700 dark:text-slate-300 text-sm font-medium text-right ${mono ? 'font-mono' : ''}`}>{value}</span>
-                                </div>
-                            ))}
+
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                            {/* Church Info */}
+                            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 grid gap-3 sm:grid-cols-2">
+                                {[
+                                    { label: 'Address', value: selected.address ?? 'Not provided' },
+                                    { label: 'Phone', value: selected.phone ?? 'Not provided' },
+                                    { label: 'Email', value: selected.email ?? 'Not provided' },
+                                ].map(({ label, value }) => (
+                                    <div key={label}>
+                                        <p className="text-xs text-slate-400 dark:text-slate-500 mb-0.5">{label}</p>
+                                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{value}</p>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Members List */}
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
+                                    <Users className="w-4 h-4 text-blue-500" />
+                                    Church Members
+                                </h3>
+
+                                <ChurchMembersList churchId={selected.id} />
+                            </div>
                         </div>
-                        <div className="px-6 pb-6">
+
+                        <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex-shrink-0">
                             <button onClick={() => setSelected(null)}
                                 className="w-full py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                                Close
+                                Close Window
                             </button>
                         </div>
                     </div>

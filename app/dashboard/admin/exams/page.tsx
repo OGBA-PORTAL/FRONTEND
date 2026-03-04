@@ -10,9 +10,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
     BookOpen, Plus, Search, Loader2, X, Clock,
-    CheckCircle, FileText, Send, Eye, Users, Award
+    CheckCircle, FileText, Send, Eye, Users, Award, Trash2, AlertTriangle, PauseCircle, PlayCircle
 } from 'lucide-react';
 import Link from 'next/link';
+import { useToast } from '@/context/ToastContext';
 
 const createExamSchema = z.object({
     title: z.string().min(3, 'Title must be at least 3 characters'),
@@ -28,14 +29,17 @@ type CreateExamForm = z.infer<typeof createExamSchema>;
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
     DRAFT: { label: 'Draft', color: 'bg-slate-100 text-slate-600', icon: FileText },
     PUBLISHED: { label: 'Published', color: 'bg-blue-100 text-blue-700', icon: Send },
+    PAUSED: { label: 'Paused', color: 'bg-orange-100 text-orange-700', icon: PauseCircle },
     COMPLETED: { label: 'Completed', color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle },
 };
 
 export default function AdminExamsPage() {
     const qc = useQueryClient();
+    const toast = useToast();
     const [search, setSearch] = useState('');
     const [showCreate, setShowCreate] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
+    const [confirmDelete, setConfirmDelete] = useState<string | null>(null); // holds exam id pending delete
 
     const { data: exams = [], isLoading } = useQuery<Exam[]>({
         queryKey: ['admin-exams'],
@@ -60,24 +64,58 @@ export default function AdminExamsPage() {
 
     const createMutation = useMutation({
         mutationFn: (data: CreateExamForm) => api.post('/exams', data),
-        onSuccess: () => {
+        onSuccess: (_, vars) => {
             qc.invalidateQueries({ queryKey: ['admin-exams'] });
             setShowCreate(false);
             reset();
             setApiError(null);
+            toast.success('Exam Created', `"${vars.title}" has been saved as a draft.`);
         },
-        onError: (err: any) => setApiError(err?.response?.data?.message ?? 'Failed to create exam'),
+        onError: (err: any) => {
+            const msg = err?.response?.data?.message ?? 'Failed to create exam';
+            setApiError(msg);
+            toast.error('Failed to Create Exam', msg);
+        },
     });
 
     const publishMutation = useMutation({
         mutationFn: (id: string) => api.patch(`/exams/${id}/status`, { status: 'PUBLISHED' }),
-        onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-exams'] }),
-        onError: (err: any) => window.alert(err?.response?.data?.message ?? 'Failed to publish exam'),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['admin-exams'] });
+            toast.success('Exam Published', 'The exam is now live.');
+        },
+        onError: (err: any) => toast.error('Publish Failed', err?.response?.data?.message ?? 'Could not publish exam'),
+    });
+
+    const pauseMutation = useMutation({
+        mutationFn: (id: string) => api.patch(`/exams/${id}/status`, { status: 'PAUSED' }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['admin-exams'] });
+            toast.success('Exam Paused', 'Students can no longer start or submit this exam.');
+        },
+        onError: (err: any) => toast.error('Pause Failed', err?.response?.data?.message ?? 'Could not pause exam'),
     });
 
     const releaseMutation = useMutation({
         mutationFn: (id: string) => api.patch(`/exams/${id}/release`),
-        onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-exams'] }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['admin-exams'] });
+            toast.success('Results Released', 'Exam results are now visible to all participants.');
+        },
+        onError: (err: any) => toast.error('Release Failed', err?.response?.data?.message ?? 'Could not release results'),
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: (id: string) => api.delete(`/exams/${id}`),
+        onSuccess: (res) => {
+            qc.invalidateQueries({ queryKey: ['admin-exams'] });
+            setConfirmDelete(null);
+            toast.success('Exam Deleted', res.data?.message ?? 'The exam has been permanently removed.');
+        },
+        onError: (err: any) => {
+            setConfirmDelete(null);
+            toast.error('Delete Failed', err?.response?.data?.message ?? 'Could not delete the exam.');
+        },
     });
 
     const filtered = exams.filter(e =>
@@ -144,6 +182,7 @@ export default function AdminExamsPage() {
                             let statusClass = cfg.color;
                             if (exam.status === 'DRAFT') statusClass = "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300";
                             if (exam.status === 'PUBLISHED') statusClass = "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400";
+                            if (exam.status === 'PAUSED') statusClass = "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400";
                             if (exam.status === 'COMPLETED') statusClass = "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400";
 
                             return (
@@ -182,35 +221,87 @@ export default function AdminExamsPage() {
                                     </div>
 
                                     {/* Actions */}
-                                    <div className="p-4 flex gap-2">
-                                        <Link href={`/dashboard/admin/exams/${exam.id}`}
-                                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                                            <Eye className="w-3.5 h-3.5" />
-                                            Manage
-                                        </Link>
-                                        {exam.status === 'DRAFT' && (
-                                            <button onClick={() => publishMutation.mutate(exam.id)}
-                                                disabled={publishMutation.isPending}
-                                                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-white text-xs font-semibold transition-all hover:opacity-90"
-                                                style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}>
-                                                <Send className="w-3.5 h-3.5" />
-                                                Publish
+                                    <div className="p-4 space-y-2">
+                                        <div className="flex gap-2">
+                                            <Link href={`/dashboard/admin/exams/${exam.id}`}
+                                                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                                                <Eye className="w-3.5 h-3.5" />
+                                                Manage
+                                            </Link>
+                                            {exam.status === 'DRAFT' && (
+                                                <button onClick={() => publishMutation.mutate(exam.id)}
+                                                    disabled={publishMutation.isPending}
+                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-white text-xs font-semibold transition-all hover:opacity-90"
+                                                    style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}>
+                                                    <Send className="w-3.5 h-3.5" />
+                                                    Publish
+                                                </button>
+                                            )}
+                                            {exam.status === 'PUBLISHED' && !exam.resultsReleased && (
+                                                <button onClick={() => pauseMutation.mutate(exam.id)}
+                                                    disabled={pauseMutation.isPending}
+                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-semibold hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors">
+                                                    <PauseCircle className="w-3.5 h-3.5" />
+                                                    Pause
+                                                </button>
+                                            )}
+                                            {exam.status === 'PAUSED' && !exam.resultsReleased && (
+                                                <button onClick={() => publishMutation.mutate(exam.id)}
+                                                    disabled={publishMutation.isPending}
+                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-white text-xs font-semibold transition-all hover:opacity-90"
+                                                    style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}>
+                                                    <PlayCircle className="w-3.5 h-3.5" />
+                                                    Resume
+                                                </button>
+                                            )}
+                                            {exam.status === 'PUBLISHED' && !exam.resultsReleased && (
+                                                <button onClick={() => releaseMutation.mutate(exam.id)}
+                                                    disabled={releaseMutation.isPending}
+                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-white text-xs font-semibold transition-all hover:opacity-90"
+                                                    style={{ background: 'linear-gradient(135deg, #059669, #10b981)' }}>
+                                                    <CheckCircle className="w-3.5 h-3.5" />
+                                                    Release Results
+                                                </button>
+                                            )}
+                                            {exam.resultsReleased && (
+                                                <span className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
+                                                    <CheckCircle className="w-3.5 h-3.5" />
+                                                    Results Released
+                                                </span>
+                                            )}
+                                            {/* Delete trigger — always visible */}
+                                            <button
+                                                onClick={() => setConfirmDelete(confirmDelete === exam.id ? null : exam.id)}
+                                                className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-xl bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+                                                title="Delete exam">
+                                                <Trash2 className="w-3.5 h-3.5" />
                                             </button>
-                                        )}
-                                        {exam.status === 'PUBLISHED' && !exam.resultsReleased && (
-                                            <button onClick={() => releaseMutation.mutate(exam.id)}
-                                                disabled={releaseMutation.isPending}
-                                                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-white text-xs font-semibold transition-all hover:opacity-90"
-                                                style={{ background: 'linear-gradient(135deg, #059669, #10b981)' }}>
-                                                <CheckCircle className="w-3.5 h-3.5" />
-                                                Release Results
-                                            </button>
-                                        )}
-                                        {exam.resultsReleased && (
-                                            <span className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
-                                                <CheckCircle className="w-3.5 h-3.5" />
-                                                Results Released
-                                            </span>
+                                        </div>
+
+                                        {/* Inline confirm row */}
+                                        {confirmDelete === exam.id && (
+                                            <div className="flex items-center gap-2 p-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 animate-in fade-in slide-in-from-top-1 duration-150">
+                                                <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                                                <p className="text-xs text-red-700 dark:text-red-300 font-medium flex-1">
+                                                    This will delete the exam, all its questions and all student attempts. This cannot be undone.
+                                                </p>
+                                                <div className="flex gap-1.5 flex-shrink-0">
+                                                    <button
+                                                        onClick={() => setConfirmDelete(null)}
+                                                        className="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-50 transition-colors">
+                                                        Cancel
+                                                    </button>
+                                                    <button
+                                                        onClick={() => deleteMutation.mutate(exam.id)}
+                                                        disabled={deleteMutation.isPending}
+                                                        className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold transition-colors disabled:opacity-60 flex items-center gap-1">
+                                                        {deleteMutation.isPending
+                                                            ? <Loader2 className="w-3 h-3 animate-spin" />
+                                                            : <Trash2 className="w-3 h-3" />}
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
