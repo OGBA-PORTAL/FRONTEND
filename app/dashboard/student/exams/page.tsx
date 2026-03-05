@@ -4,7 +4,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { Exam, ExamAttempt } from '@/lib/types';
-import { BookOpen, Play, Clock, CheckCircle, Award, Loader2, Users, Lock } from 'lucide-react';
+import { BookOpen, Play, Clock, CheckCircle, Award, Loader2, Users, Lock, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/context/ToastContext';
@@ -128,12 +128,14 @@ export default function StudentExamsPage() {
         mutationFn: (examId: string) => api.post(`/exams/${examId}/attempt`),
         onSuccess: (_, examId) => {
             qc.invalidateQueries({ queryKey: ['my-attempts'] });
+            setConfirmRepeatExam(null);
             toast.info('Exam Started', 'Good luck! Your time starts now.');
             router.push(`/dashboard/student/exams/${examId}/take`);
         },
         onError: (err: any) => {
             const msg = err?.response?.data?.message ?? 'Could not start the exam. You may not be eligible yet.';
             toast.error('Cannot Start Exam', msg);
+            setConfirmRepeatExam(null);
         },
     });
 
@@ -142,6 +144,19 @@ export default function StudentExamsPage() {
     const isStarted = (attempt?: ExamAttempt) => !!attempt && !attempt.submittedAt;
 
     const userRankLevel = user?.ranks?.level ?? 0;
+
+    const [confirmRepeatExam, setConfirmRepeatExam] = useState<Exam | null>(null);
+
+    const handleStartClick = (exam: Exam) => {
+        const examRankLevel = exam.ranks?.level ?? 1;
+        // If the exam is for their current rank (or lower), warn them.
+        if (examRankLevel <= userRankLevel) {
+            setConfirmRepeatExam(exam);
+        } else {
+            // It's a promotion exam, proceed immediately
+            startMutation.mutate(exam.id);
+        }
+    };
 
     return (
         <ProtectedRoute allowedRoles={['RA']}>
@@ -244,13 +259,20 @@ export default function StudentExamsPage() {
                                     <div className="p-4">
                                         {completed ? (
                                             <div className="flex items-center justify-between">
-                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold ${attempt?.passed ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'}`}>
-                                                    <CheckCircle className="w-3.5 h-3.5" />
-                                                    {attempt?.passed ? `Passed — ${attempt.score}%` : `Failed — ${attempt?.score ?? 0}%`}
-                                                </span>
+                                                {attempt!.score !== null ? (
+                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold ${attempt!.passed ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30' : 'bg-red-50 text-red-600 dark:bg-red-900/30'}`}>
+                                                        <CheckCircle className="w-3.5 h-3.5" />
+                                                        {attempt!.passed ? 'Passed' : 'Failed'} • {attempt!.score}%
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                                                        <CheckCircle className="w-3.5 h-3.5" />
+                                                        Submitted for Grading
+                                                    </span>
+                                                )}
                                                 <Link href="/dashboard/student/results"
                                                     className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline">
-                                                    View Results →
+                                                    View Status →
                                                 </Link>
                                             </div>
                                         ) : started ? (
@@ -276,11 +298,11 @@ export default function StudentExamsPage() {
                                                 Coming Soon
                                             </div>
                                         ) : (
-                                            <button onClick={() => startMutation.mutate(exam.id)}
+                                            <button onClick={() => handleStartClick(exam)}
                                                 disabled={startMutation.isPending}
                                                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 disabled:opacity-60"
                                                 style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}>
-                                                {startMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                                                {startMutation.isPending && confirmRepeatExam?.id !== exam.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                                                 Start Exam
                                             </button>
                                         )}
@@ -288,6 +310,42 @@ export default function StudentExamsPage() {
                                 </div>
                             );
                         })}
+                    </div>
+                )}
+
+                {/* Repeat Exam Confirmation Warning */}
+                {confirmRepeatExam && (
+                    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+                        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+                            <div className="p-6">
+                                <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center shadow-lg shadow-amber-500/20 mb-4">
+                                    <AlertCircle className="w-6 h-6 text-amber-500" />
+                                </div>
+                                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">Repeat Rank Exam?</h2>
+                                <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
+                                    You are trying to attempt the <strong className="text-slate-700 dark:text-slate-300">"{confirmRepeatExam.title}"</strong>, which is designed for a rank you already hold (or lower).
+                                </p>
+                                <div className="mt-4 p-4 rounded-xl border bg-amber-50/50 border-amber-100 dark:bg-amber-900/10 dark:border-amber-900/30">
+                                    <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">
+                                        Was this a mistake? If you are looking for promotion, you should attempt the exam for your <strong>NEXT</strong> rank sequence instead.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="p-6 pt-0 flex gap-3">
+                                <button
+                                    onClick={() => !startMutation.isPending && setConfirmRepeatExam(null)}
+                                    disabled={startMutation.isPending}
+                                    className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => startMutation.mutate(confirmRepeatExam.id)}
+                                    disabled={startMutation.isPending}
+                                    className="flex-1 px-4 py-3 rounded-xl text-white font-bold transition-all hover:opacity-90 disabled:opacity-60 shadow-lg shadow-amber-500/25 flex items-center justify-center bg-amber-500 hover:bg-amber-600">
+                                    {startMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Yes, Proceed'}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

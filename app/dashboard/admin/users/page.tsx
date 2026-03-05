@@ -11,11 +11,12 @@ import { z } from 'zod';
 import {
     Users, Search, Filter,
     CheckCircle, XCircle, Loader2, X, UserPlus,
-    Shield, BookOpen, Building2, ChevronRight, GraduationCap, AlertCircle, LayoutGrid, List
+    Shield, BookOpen, Building2, ChevronRight, GraduationCap, AlertCircle, LayoutGrid, List, MoreVertical, Ban
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import MemberDetailsModal from '@/components/MemberDetailsModal';
+import BulkConfirmModal from '@/components/BulkConfirmModal';
 
 // Schema with conditional validation
 const createUserSchema = z.object({
@@ -62,6 +63,14 @@ export default function AdminUsersPage() {
     const [activeTab, setActiveTab] = useState<'ALL' | 'ROLE' | 'CHURCH'>('ALL');
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [expandedChurchId, setExpandedChurchId] = useState<string | null>(null);
+    const [showGlobalBulk, setShowGlobalBulk] = useState(false);
+    const [bulkConfirmOptions, setBulkConfirmOptions] = useState<{
+        isOpen: boolean;
+        type: 'ACTIVE' | 'SUSPENDED';
+        targetIds: string[];
+        isGlobal: boolean;
+        churchName?: string;
+    } | null>(null);
 
     // Queries
     const { data: users = [], isLoading } = useQuery<User[]>({
@@ -139,6 +148,59 @@ export default function AdminUsersPage() {
         createMutation.mutate(data);
     };
 
+    const bulkUpdateMutation = useMutation({
+        mutationFn: ({ userIds, status }: { userIds: string[], status: 'ACTIVE' | 'SUSPENDED' }) =>
+            api.patch('/users/bulk-status', { userIds, status }),
+        onSuccess: (res, vars) => {
+            qc.invalidateQueries({ queryKey: ['admin-users'] });
+            setShowGlobalBulk(false);
+            setBulkConfirmOptions(null);
+            const count = res.data?.data?.updatedCount || vars.userIds.length;
+            toast.success('Bulk Update Complete', `Successfully ${vars.status === 'ACTIVE' ? 'activated' : 'suspended'} ${count} members.`);
+        },
+        onError: (err: any) => {
+            toast.error('Bulk Update Failed', err?.response?.data?.message ?? 'Could not complete bulk update');
+        }
+    });
+
+    const handleGlobalBulkAction = (status: 'ACTIVE' | 'SUSPENDED') => {
+        // Find all RAs
+        const targetIds = users.filter(u => u.role === 'RA').map(u => u.id);
+        if (targetIds.length === 0) return toast.error('No Targets', 'No RA members found to update.');
+
+        setBulkConfirmOptions({
+            isOpen: true,
+            type: status,
+            targetIds,
+            isGlobal: true,
+        });
+        setShowGlobalBulk(false);
+    };
+
+    const handleChurchBulkAction = (churchId: string, status: 'ACTIVE' | 'SUSPENDED', e: React.MouseEvent) => {
+        e.stopPropagation();
+        const targetIds = users.filter(u => u.churchId === churchId && u.role === 'RA').map(u => u.id);
+        if (targetIds.length === 0) return toast.error('No Targets', 'No RA members found in this church.');
+
+        const church = churches.find(c => c.id === churchId);
+
+        setBulkConfirmOptions({
+            isOpen: true,
+            type: status,
+            targetIds,
+            isGlobal: false,
+            churchName: church?.name
+        });
+    };
+
+    const executeBulkStatusUpdate = () => {
+        if (!bulkConfirmOptions) return;
+        bulkUpdateMutation.mutate({
+            userIds: bulkConfirmOptions.targetIds,
+            status: bulkConfirmOptions.type
+        });
+    };
+
     // Calculate church stats
     const churchStats = useMemo(() => {
         return churches.map(church => {
@@ -206,12 +268,42 @@ export default function AdminUsersPage() {
                         <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Manage all {users.length} registered members across the portal.</p>
                     </div>
                     {(allowedCreateRoles.length > 0) && (
-                        <button onClick={() => { setShowCreate(true); setApiError(null); reset(); }}
-                            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-bold transition-all hover:opacity-90 active:scale-95 shadow-lg shadow-blue-500/25 sm:w-auto w-full"
-                            style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}>
-                            <UserPlus className="w-4 h-4" />
-                            Register Member
-                        </button>
+                        <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto relative">
+                            <button onClick={() => { setShowCreate(true); setApiError(null); reset(); }}
+                                className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-bold transition-all hover:opacity-90 active:scale-95 shadow-lg shadow-blue-500/25 flex-1 sm:flex-none"
+                                style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}>
+                                <UserPlus className="w-4 h-4" />
+                                Register Member
+                            </button>
+
+                            {/* Global Bulk Actions Dropdown */}
+                            <div className="relative flex-shrink-0">
+                                <button
+                                    onClick={() => setShowGlobalBulk(!showGlobalBulk)}
+                                    className="flex items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
+                                    <MoreVertical className="w-5 h-5" />
+                                </button>
+
+                                {showGlobalBulk && (
+                                    <>
+                                        <div className="fixed inset-0 z-10" onClick={() => setShowGlobalBulk(false)} />
+                                        <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 py-2 z-20 animate-in fade-in slide-in-from-top-2">
+                                            <div className="px-3 pb-2 border-b border-slate-100 dark:border-slate-700 mb-2">
+                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Global Actions</p>
+                                            </div>
+                                            <button onClick={() => handleGlobalBulkAction('ACTIVE')} disabled={bulkUpdateMutation.isPending}
+                                                className="w-full text-left px-4 py-2 text-sm text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 flex items-center gap-2 transition-colors">
+                                                <CheckCircle className="w-4 h-4" /> Activate All RAs
+                                            </button>
+                                            <button onClick={() => handleGlobalBulkAction('SUSPENDED')} disabled={bulkUpdateMutation.isPending}
+                                                className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 transition-colors">
+                                                <Ban className="w-4 h-4" /> Suspend All RAs
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
                     )}
                 </div>
 
@@ -318,11 +410,30 @@ export default function AdminUsersPage() {
                                                     <p className="text-2xl font-black text-slate-800 dark:text-slate-200">{church.total}</p>
                                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total</p>
                                                 </div>
-                                                <div className="text-center">
+                                                <div className="text-center mr-0 sm:mr-2">
                                                     <p className="text-lg font-bold text-amber-600 dark:text-amber-500">{church.adminCount}</p>
                                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Admins</p>
                                                 </div>
-                                                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center transition-transform duration-300 ml-4 hidden sm:flex" style={{ transform: expandedChurchId === church.id ? 'rotate(90deg)' : 'rotate(0)' }}>
+
+                                                {/* Church Bulk Actions */}
+                                                <div className="flex items-center gap-1 sm:gap-2 border-l border-slate-200 dark:border-slate-700 pl-3 sm:pl-4">
+                                                    <button
+                                                        onClick={(e) => handleChurchBulkAction(church.id, 'ACTIVE', e)}
+                                                        disabled={bulkUpdateMutation.isPending}
+                                                        className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                                                        title="Activate All RAs in Church">
+                                                        <CheckCircle className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => handleChurchBulkAction(church.id, 'SUSPENDED', e)}
+                                                        disabled={bulkUpdateMutation.isPending}
+                                                        className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                                        title="Suspend All RAs in Church">
+                                                        <Ban className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+
+                                                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center transition-transform duration-300 ml-2 hidden sm:flex" style={{ transform: expandedChurchId === church.id ? 'rotate(90deg)' : 'rotate(0)' }}>
                                                     <ChevronRight className="w-4 h-4 text-slate-500" />
                                                 </div>
                                             </div>
@@ -351,6 +462,24 @@ export default function AdminUsersPage() {
             {/* Member Details Modal Slide-over */}
             {selectedUser && (
                 <MemberDetailsModal user={selectedUser} onClose={() => setSelectedUser(null)} />
+            )}
+
+            {/* Bulk Confirmation Modal */}
+            {bulkConfirmOptions && (
+                <BulkConfirmModal
+                    isOpen={bulkConfirmOptions.isOpen}
+                    onClose={() => setBulkConfirmOptions(null)}
+                    onConfirm={executeBulkStatusUpdate}
+                    actionType={bulkConfirmOptions.type}
+                    targetCount={bulkConfirmOptions.targetIds.length}
+                    isLoading={bulkUpdateMutation.isPending}
+                    title={bulkConfirmOptions.type === 'SUSPENDED' ? 'Confirm Mass Suspension' : 'Confirm Mass Activation'}
+                    description={
+                        bulkConfirmOptions.isGlobal
+                            ? `You are targeting all ${bulkConfirmOptions.targetIds.length} registered RAs across the entire portal.`
+                            : `You are targeting ${bulkConfirmOptions.targetIds.length} RAs located specifically in ${bulkConfirmOptions.churchName}.`
+                    }
+                />
             )}
 
             {/* Create User Modal (Retained Original Structure) */}

@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import {
     LayoutDashboard, BookOpen, Award, User, Users,
     LogOut, ChevronRight, Menu, X, Bell, ChevronDown,
-    PanelLeftClose, PanelLeftOpen, UserCircle, Shield
+    PanelLeftClose, PanelLeftOpen, UserCircle, Shield, FileText
 } from 'lucide-react';
 import { useState } from 'react';
 import Image from 'next/image';
@@ -23,6 +23,7 @@ const memberNav = [
 
 const adminNav = [
     { href: '/dashboard/church-admin/members', label: 'Church Members', icon: Users },
+    { href: '/dashboard/church-admin/reports', label: 'Official Reports', icon: FileText },
 ];
 
 export default function ChurchAdminLayout({ children }: { children: React.ReactNode }) {
@@ -64,18 +65,18 @@ export default function ChurchAdminLayout({ children }: { children: React.ReactN
                     transition-all duration-200 group relative
                     ${collapsed ? 'justify-center px-2 py-3' : 'px-3 py-2.5'}
                     ${active
-                        ? 'bg-white text-blue-900 shadow-lg shadow-blue-900/20'
-                        : 'text-blue-200 hover:bg-white/10 hover:text-white'}
+                        ? 'bg-white/20 text-white shadow-lg shadow-black/10 backdrop-blur-md border border-white/20 font-semibold'
+                        : 'text-blue-100/80 hover:bg-white/10 hover:text-white'}
                 `}>
                 {active && !collapsed && (
                     <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-yellow-400 rounded-r-full" />
                 )}
                 <item.icon style={{ width: '18px', height: '18px', flexShrink: 0 }}
-                    className={active ? 'text-blue-700' : 'text-blue-300 group-hover:text-white'} />
+                    className={active ? 'text-yellow-400' : 'text-blue-300 group-hover:text-white'} />
                 {!collapsed && (
                     <>
-                        <span className={`text-sm font-medium flex-1 ${active ? 'text-blue-900' : ''}`}>{item.label}</span>
-                        {active && <ChevronRight className="w-3.5 h-3.5 text-blue-400" />}
+                        <span className={`text-sm flex-1 ${active ? 'text-white' : ''}`}>{item.label}</span>
+                        {active && <ChevronRight className="w-4 h-4 text-white/50" />}
                     </>
                 )}
             </Link>

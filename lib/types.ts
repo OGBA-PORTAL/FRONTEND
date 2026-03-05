@@ -69,6 +69,7 @@ export interface ExamAttempt {
     submittedAt?: string;
     completedAt?: string;
     passed?: boolean | null;
+    statusDisplay?: string;
     exams?: Exam;
     users?: {
         id: string;

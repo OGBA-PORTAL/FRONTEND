@@ -9,11 +9,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
     Users, Plus, X, Loader2, UserCheck, UserX,
-    Search, Award, CheckCircle, Clock, Shield, BookOpen, Building2, ChevronRight, AlertCircle, List, UserPlus
+    Search, Award, CheckCircle, Clock, Shield, BookOpen, Building2, ChevronRight, AlertCircle, List, UserPlus, MoreVertical, Ban
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { Rank, User } from '@/lib/types';
 import MemberDetailsModal from '@/components/MemberDetailsModal';
+import BulkConfirmModal from '@/components/BulkConfirmModal';
 import { useAuth } from '@/context/AuthContext';
 
 const registerSchema = z.object({
@@ -43,6 +44,12 @@ export default function ChurchMembersPage() {
     const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState<'ALL' | 'ROLE'>('ALL');
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [showGlobalBulk, setShowGlobalBulk] = useState(false);
+    const [bulkConfirmOptions, setBulkConfirmOptions] = useState<{
+        isOpen: boolean;
+        type: 'ACTIVE' | 'SUSPENDED';
+        targetIds: string[];
+    } | null>(null);
 
     const { data: members = [], isLoading } = useQuery<User[]>({
         queryKey: ['church-members'],
@@ -78,6 +85,42 @@ export default function ChurchMembersPage() {
             toast.error('Registration Failed', err?.response?.data?.message ?? 'Could not register member.');
         },
     });
+
+    const bulkUpdateMutation = useMutation({
+        mutationFn: ({ userIds, status }: { userIds: string[], status: 'ACTIVE' | 'SUSPENDED' }) =>
+            api.patch('/users/bulk-status', { userIds, status }),
+        onSuccess: (res, vars) => {
+            qc.invalidateQueries({ queryKey: ['church-members'] });
+            setShowGlobalBulk(false);
+            setBulkConfirmOptions(null);
+            const count = res.data?.data?.updatedCount || vars.userIds.length;
+            toast.success('Bulk Update Complete', `Successfully ${vars.status === 'ACTIVE' ? 'activated' : 'suspended'} ${count} members.`);
+        },
+        onError: (err: any) => {
+            toast.error('Bulk Update Failed', err?.response?.data?.message ?? 'Could not complete bulk update');
+        }
+    });
+
+    const handleGlobalBulkAction = (status: 'ACTIVE' | 'SUSPENDED') => {
+        // Find all RAs in this church
+        const targetIds = members.filter(u => u.role === 'RA').map(u => u.id);
+        if (targetIds.length === 0) return toast.error('No Targets', 'No RA members found to update.');
+
+        setBulkConfirmOptions({
+            isOpen: true,
+            type: status,
+            targetIds
+        });
+        setShowGlobalBulk(false);
+    };
+
+    const executeBulkStatusUpdate = () => {
+        if (!bulkConfirmOptions) return;
+        bulkUpdateMutation.mutate({
+            userIds: bulkConfirmOptions.targetIds,
+            status: bulkConfirmOptions.type
+        });
+    };
 
     const filtered = members.filter(m =>
         search === '' ||
@@ -137,12 +180,14 @@ export default function ChurchMembersPage() {
                         <h1 className="text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">Church Members</h1>
                         <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Manage all {members.length} registered members in your church.</p>
                     </div>
-                    <button onClick={() => { setShowRegister(true); reset(); }}
-                        className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-bold transition-all hover:opacity-90 active:scale-95 shadow-lg shadow-blue-500/25 sm:w-auto w-full"
-                        style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}>
-                        <Plus className="w-4 h-4" />
-                        Register Member
-                    </button>
+                    <div className="flex items-center gap-3 relative">
+                        <button onClick={() => { setShowRegister(true); reset(); }}
+                            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-bold transition-all hover:opacity-90 active:scale-95 shadow-lg shadow-blue-500/25 sm:w-auto w-full"
+                            style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}>
+                            <Plus className="w-4 h-4" />
+                            Register Member
+                        </button>
+                    </div>
                 </div>
 
                 {/* Main Content Area */}
@@ -151,17 +196,25 @@ export default function ChurchMembersPage() {
                     {/* Tabs & Search Header */}
                     <div className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4">
-                            {/* Tabs */}
-                            <div className="flex p-1 bg-slate-200/50 dark:bg-slate-800 rounded-xl self-start w-full md:w-auto overflow-x-auto custom-scrollbar">
+                            {/* Role Based Tabs */}
+                            <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl self-start w-full md:w-auto overflow-x-auto custom-scrollbar">
                                 <button
                                     onClick={() => setActiveTab('ALL')}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${activeTab === 'ALL' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
-                                    <List className="w-4 h-4" /> All Members
+                                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'ALL'
+                                        ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm'
+                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                                        }`}
+                                >
+                                    All Members ({members.length})
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('ROLE')}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${activeTab === 'ROLE' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
-                                    <Shield className="w-4 h-4" /> By Role
+                                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'ROLE'
+                                        ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm'
+                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                                        }`}
+                                >
+                                    By Role
                                 </button>
                             </div>
 
@@ -177,7 +230,7 @@ export default function ChurchMembersPage() {
                         </div>
                     </div>
 
-                    {/* View Areas */}
+                    {/* Renders Tabs Below */}
                     <div className="flex-1 bg-slate-50/30 dark:bg-slate-900 overflow-y-auto">
                         {isLoading ? (
                             <div className="h-full flex flex-col items-center justify-center p-12">
@@ -227,6 +280,20 @@ export default function ChurchMembersPage() {
             {/* Member Details Modal Slide-over */}
             {selectedUser && (
                 <MemberDetailsModal user={selectedUser} onClose={() => setSelectedUser(null)} />
+            )}
+
+            {/* Bulk Confirmation Modal */}
+            {bulkConfirmOptions && (
+                <BulkConfirmModal
+                    isOpen={bulkConfirmOptions.isOpen}
+                    onClose={() => setBulkConfirmOptions(null)}
+                    onConfirm={executeBulkStatusUpdate}
+                    actionType={bulkConfirmOptions.type}
+                    targetCount={bulkConfirmOptions.targetIds.length}
+                    isLoading={bulkUpdateMutation.isPending}
+                    title={bulkConfirmOptions.type === 'SUSPENDED' ? 'Confirm Mass Suspension' : 'Confirm Mass Activation'}
+                    description={`You are targeting all ${bulkConfirmOptions.targetIds.length} registered RAs in your church. This will not affect other Church Admins.`}
+                />
             )}
 
             {/* Register Member Modal */}

@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import {
     LayoutDashboard, Users, BookOpen, BarChart3,
     Church, LogOut, ChevronRight, Menu, X,
-    Bell, Settings, ChevronDown, PanelLeftClose, PanelLeftOpen, UserCircle
+    Bell, Settings, ChevronDown, PanelLeftClose, PanelLeftOpen, UserCircle, FileText
 } from 'lucide-react';
 import { useState } from 'react';
 import Image from 'next/image';
@@ -18,7 +18,8 @@ const navItems = [
     { href: '/dashboard/admin/exams', label: 'Exam Management', icon: BookOpen },
     { href: '/dashboard/admin/users', label: 'Members', icon: Users },
     { href: '/dashboard/admin/churches', label: 'Churches', icon: Church },
-    { href: '/dashboard/admin/results', label: 'Results & Reports', icon: BarChart3 },
+    { href: '/dashboard/admin/results', label: 'Results', icon: BarChart3 },
+    { href: '/dashboard/admin/reports', label: 'Official Reports', icon: FileText },
     { href: '/dashboard/admin/profile', label: 'My Profile', icon: UserCircle },
 ];
 
@@ -86,13 +87,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     fixed inset-y-0 left-0 z-30 flex flex-col
                     transition-all duration-500 ease-out
                     lg:relative lg:translate-x-0
+                    backdrop-blur-3xl border-r border-white/20
                     ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
                     ${collapsed ? 'lg:w-[72px]' : 'lg:w-64'}
                     w-64
                 `}
                 style={{
-                    background: 'linear-gradient(160deg, #0f2d7a 0%, #1a3fa8 45%, #1e3a8a 100%)',
-                    boxShadow: '4px 0 24px rgba(0,0,0,0.25)'
+                    background: 'linear-gradient(160deg, rgba(15, 45, 122, 0.9) 0%, rgba(26, 63, 168, 0.9) 45%, rgba(30, 58, 138, 0.95) 100%)',
+                    boxShadow: '4px 0 32px rgba(0,0,0,0.15)'
                 }}
             >
                 {/* Logo + Collapse Toggle */}
@@ -183,8 +185,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                     transition-all duration-200 group relative
                                     ${collapsed ? 'justify-center px-2 py-3' : 'px-3 py-2.5'}
                                     ${active
-                                        ? 'bg-white text-blue-900 shadow-lg shadow-blue-900/20'
-                                        : 'text-blue-200 hover:bg-white/10 hover:text-white'
+                                        ? 'bg-white/20 text-white shadow-lg shadow-black/10 backdrop-blur-md border border-white/20 font-semibold'
+                                        : 'text-blue-100/80 hover:bg-white/10 hover:text-white'
                                     }
                                 `}
                             >
@@ -192,13 +194,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                     <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-yellow-400 rounded-r-full" />
                                 )}
                                 <item.icon style={{ width: '18px', height: '18px', flexShrink: 0 }}
-                                    className={active ? 'text-blue-700' : 'text-blue-300 group-hover:text-white'} />
+                                    className={active ? 'text-yellow-400' : 'text-blue-300 group-hover:text-white'} />
                                 {!collapsed && (
                                     <>
-                                        <span className={`text-sm font-medium flex-1 ${active ? 'text-blue-900' : ''}`}>
+                                        <span className={`text-sm flex-1 ${active ? 'text-white' : ''}`}>
                                             {item.label}
                                         </span>
-                                        {active && <ChevronRight className="w-3.5 h-3.5 text-blue-400" />}
+                                        {active && <ChevronRight className="w-4 h-4 text-white/50" />}
                                     </>
                                 )}
                             </Link>

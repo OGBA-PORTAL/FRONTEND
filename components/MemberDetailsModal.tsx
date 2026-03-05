@@ -82,7 +82,13 @@ export default function MemberDetailsModal({ user, onClose }: MemberDetailsModal
     });
 
     // Permission Checkers
-    const canManageStatus = (currentUser?.role === 'SYSTEM_ADMIN' || currentUser?.role === 'ASSOCIATION_OFFICER') && user.id !== currentUser?.id;
+    const canManageStatus = (() => {
+        if (currentUser?.id === user.id) return false;
+        if (currentUser?.role === 'SYSTEM_ADMIN') return true;
+        if (currentUser?.role === 'ASSOCIATION_OFFICER') return user.role !== 'SYSTEM_ADMIN';
+        if (currentUser?.role === 'CHURCH_ADMIN') return user.role === 'RA';
+        return false;
+    })();
 
     const canDeleteUser = (targetRole: string) => {
         if (currentUser?.id === user.id) return false;
