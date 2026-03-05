@@ -9,12 +9,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-    Users, Plus, Search, Filter, MoreVertical,
+    Users, Search, Filter,
     CheckCircle, XCircle, Loader2, X, UserPlus,
-    Shield, BookOpen, Building2, ChevronRight, GraduationCap, AlertCircle, Trash2, UserCog
+    Shield, BookOpen, Building2, ChevronRight, GraduationCap, AlertCircle, LayoutGrid, List
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
+import MemberDetailsModal from '@/components/MemberDetailsModal';
 
 // Schema with conditional validation
 const createUserSchema = z.object({
@@ -38,16 +39,16 @@ const createUserSchema = z.object({
 type CreateUserForm = z.infer<typeof createUserSchema>;
 
 const roleColors: Record<string, string> = {
-    RA: 'bg-blue-100 text-blue-700',
-    CHURCH_ADMIN: 'bg-amber-100 text-amber-700',
-    ASSOCIATION_OFFICER: 'bg-purple-100 text-purple-700',
-    SYSTEM_ADMIN: 'bg-red-100 text-red-700',
+    RA: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    CHURCH_ADMIN: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+    ASSOCIATION_OFFICER: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+    SYSTEM_ADMIN: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
 };
 
 const statusColors: Record<string, string> = {
-    ACTIVE: 'bg-emerald-100 text-emerald-700',
-    PENDING_ACTIVATION: 'bg-yellow-100 text-yellow-700',
-    SUSPENDED: 'bg-red-100 text-red-700',
+    ACTIVE: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+    PENDING_ACTIVATION: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+    SUSPENDED: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
 };
 
 export default function AdminUsersPage() {
@@ -58,9 +59,9 @@ export default function AdminUsersPage() {
     const [roleFilter, setRoleFilter] = useState('');
     const [showCreate, setShowCreate] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
-    const [confirmAction, setConfirmAction] = useState<{ id: string, name: string, status: 'ACTIVE' | 'SUSPENDED', actionText: string } | null>(null);
-    const [deleteConfirm, setDeleteConfirm] = useState<{ id: string, name: string, role: string } | null>(null);
-    const [roleMenuOpen, setRoleMenuOpen] = useState<string | null>(null); // userId whose role menu is open
+    const [activeTab, setActiveTab] = useState<'ALL' | 'ROLE' | 'CHURCH'>('ALL');
+    const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [expandedChurchId, setExpandedChurchId] = useState<string | null>(null);
 
     // Queries
     const { data: users = [], isLoading } = useQuery<User[]>({
@@ -71,7 +72,6 @@ export default function AdminUsersPage() {
     const { data: churches = [] } = useQuery<Church[]>({
         queryKey: ['churches'],
         queryFn: async () => (await api.get('/churches')).data.data.churches,
-        enabled: showCreate // Optimization
     });
 
     const { data: ranks = [] } = useQuery<Rank[]>({
@@ -80,38 +80,28 @@ export default function AdminUsersPage() {
         enabled: showCreate
     });
 
-    // Determine allowed roles based on current user
     const allowedCreateRoles = useMemo(() => {
         if (!currentUser) return [];
-        if (currentUser.role === 'SYSTEM_ADMIN') return ['ASSOCIATION_OFFICER', 'CHURCH_ADMIN', 'RA']; // Can create all, but UI emphasizes Admin
+        if (currentUser.role === 'SYSTEM_ADMIN') return ['ASSOCIATION_OFFICER', 'CHURCH_ADMIN', 'RA'];
         if (currentUser.role === 'ASSOCIATION_OFFICER') return ['CHURCH_ADMIN', 'RA'];
         if (currentUser.role === 'CHURCH_ADMIN') return ['RA'];
         return [];
     }, [currentUser]);
 
-    // Form
     const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<CreateUserForm>({
         resolver: zodResolver(createUserSchema),
-        defaultValues: {
-            role: 'RA', // Default, will change on open
-        }
+        defaultValues: { role: 'RA' }
     });
 
     const selectedRole = watch('role');
 
-    // Effect: Set default role when modal opens
     useEffect(() => {
         if (showCreate && allowedCreateRoles.length > 0) {
-            // Default to the first allowed role, or specific logic
-            // If SysAdmin/Assoc, maybe default to Church Admin? Or just the first one.
-            // If ChurchAdmin, default to RA.
-            // Let's default to the "most likely" action.
             if (currentUser?.role === 'CHURCH_ADMIN') setValue('role', 'RA');
-            else if (currentUser?.role === 'SYSTEM_ADMIN') setValue('role', 'ASSOCIATION_OFFICER'); // or Church Admin
+            else if (currentUser?.role === 'SYSTEM_ADMIN') setValue('role', 'ASSOCIATION_OFFICER');
         }
     }, [showCreate, allowedCreateRoles, currentUser, setValue]);
 
-    // Effect: Set default church if Church Admin
     useEffect(() => {
         if (currentUser?.role === 'CHURCH_ADMIN' && currentUser.churchId) {
             setValue('churchId', currentUser.churchId);
@@ -135,80 +125,6 @@ export default function AdminUsersPage() {
         },
     });
 
-    const statusMutation = useMutation({
-        mutationFn: ({ id, status }: { id: string; status: string }) =>
-            api.patch(`/users/${id}/status`, { status }),
-        onSuccess: (_, vars) => {
-            qc.invalidateQueries({ queryKey: ['admin-users'] });
-            const action = vars.status === 'ACTIVE' ? 'Activated' : 'Suspended';
-            toast.success(`Account ${action}`, `The user account has been ${action.toLowerCase()} successfully.`);
-            setConfirmAction(null);
-        },
-        onError: (err: any) => {
-            toast.error('Action Failed', err?.response?.data?.message ?? 'Could not update account status.');
-            setConfirmAction(null);
-        }
-    });
-
-    const deleteMutation = useMutation({
-        mutationFn: (id: string) => api.delete(`/users/${id}`),
-        onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ['admin-users'] });
-            setDeleteConfirm(null);
-            toast.success('Account Deleted', 'The user account has been permanently deleted.');
-        },
-        onError: (err: any) => {
-            setDeleteConfirm(null);
-            const msg = err?.response?.data?.message ?? 'Failed to delete user';
-            setApiError(msg);
-            toast.error('Deletion Failed', msg);
-        }
-    });
-
-    // Determine if current user is allowed to delete the given user
-    const canDeleteUser = (targetRole: string) => {
-        const allowedDeletions: Record<string, string[]> = {
-            SYSTEM_ADMIN: ['ASSOCIATION_OFFICER', 'CHURCH_ADMIN', 'RA'],
-            ASSOCIATION_OFFICER: ['CHURCH_ADMIN', 'RA'],
-            CHURCH_ADMIN: [],
-        };
-        return (allowedDeletions[currentUser?.role ?? ''] ?? []).includes(targetRole);
-    };
-
-    const changeRoleMutation = useMutation({
-        mutationFn: ({ id, role }: { id: string; role: string }) =>
-            api.patch(`/users/${id}/role`, { role }),
-        onSuccess: (_, vars) => {
-            qc.invalidateQueries({ queryKey: ['admin-users'] });
-            setRoleMenuOpen(null);
-            const roleLabel = vars.role === 'RA' ? 'RA Member' : vars.role === 'CHURCH_ADMIN' ? 'Church Admin' : 'Assoc. Officer';
-            toast.success('Role Updated', `User role has been changed to ${roleLabel}.`);
-        },
-        onError: (err: any) => {
-            setRoleMenuOpen(null);
-            const msg = err?.response?.data?.message ?? 'Failed to change role';
-            setApiError(msg);
-            toast.error('Role Change Failed', msg);
-        }
-    });
-
-    // Get the roles the current admin can assign to a target role
-    const getRoleOptions = (targetRole: string): { value: string; label: string }[] => {
-        const allOptions = [
-            { value: 'RA', label: 'RA Member' },
-            { value: 'CHURCH_ADMIN', label: 'Church Admin' },
-            { value: 'ASSOCIATION_OFFICER', label: 'Assoc. Officer' },
-        ];
-        const manageable: Record<string, string[]> = {
-            SYSTEM_ADMIN: ['RA', 'CHURCH_ADMIN', 'ASSOCIATION_OFFICER'],
-            ASSOCIATION_OFFICER: ['RA', 'CHURCH_ADMIN'],
-            CHURCH_ADMIN: [],
-        };
-        const allowed = manageable[currentUser?.role ?? ''] ?? [];
-        if (!allowed.includes(targetRole)) return []; // can't manage this role at all
-        return allOptions.filter(o => o.value !== targetRole && allowed.includes(o.value));
-    };
-
     const filtered = users.filter(u => {
         const matchSearch = search === '' ||
             `${u.firstName} ${u.lastName} ${u.raNumber}`.toLowerCase().includes(search.toLowerCase());
@@ -217,29 +133,81 @@ export default function AdminUsersPage() {
     });
 
     const onSubmit = (data: CreateUserForm) => {
-        // Validation logic for churchId
         if ((data.role === 'RA' || data.role === 'CHURCH_ADMIN') && !data.churchId && currentUser?.role !== 'CHURCH_ADMIN') {
-            // System Admin creating RA/Church Admin must select church
-            if (!data.churchId) {
-                // Should be caught by Zod userRefine but double check
-                return;
-            }
+            if (!data.churchId) return;
         }
         createMutation.mutate(data);
     };
 
+    // Calculate church stats
+    const churchStats = useMemo(() => {
+        return churches.map(church => {
+            const churchMembers = users.filter(u => u.churchId === church.id);
+            const raCount = churchMembers.filter(u => u.role === 'RA').length;
+            const adminCount = churchMembers.filter(u => u.role === 'CHURCH_ADMIN').length;
+            return {
+                ...church,
+                members: churchMembers,
+                total: churchMembers.length,
+                raCount,
+                adminCount
+            };
+        }).sort((a, b) => b.total - a.total);
+    }, [churches, users]);
+
+    // Roles grouping
+    const rolesGrouped = [
+        { id: 'SYSTEM_ADMIN', label: 'System Admins', icon: Shield, members: users.filter(u => u.role === 'SYSTEM_ADMIN') },
+        { id: 'ASSOCIATION_OFFICER', label: 'Association Officers', icon: Building2, members: users.filter(u => u.role === 'ASSOCIATION_OFFICER') },
+        { id: 'CHURCH_ADMIN', label: 'Church Admins', icon: Users, members: users.filter(u => u.role === 'CHURCH_ADMIN') },
+        { id: 'RA', label: 'RA Members', icon: BookOpen, members: users.filter(u => u.role === 'RA') },
+    ];
+
+    const UserRow = ({ user }: { user: User }) => (
+        <div
+            onClick={() => setSelectedUser(user)}
+            className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group">
+            <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0 shadow-sm"
+                    style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}>
+                    {user.firstName[0]}{user.lastName[0]}
+                </div>
+                <div>
+                    <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        {user.firstName} {user.lastName}
+                    </h4>
+                    <div className="flex items-center gap-3 text-xs text-slate-500 mt-1 font-medium">
+                        <span className="font-mono">{user.raNumber}</span>
+                        <span className="hidden sm:inline">&bull;</span>
+                        <span className="hidden sm:inline">{user.churches?.name ?? 'System Level'}</span>
+                    </div>
+                </div>
+            </div>
+            <div className="flex items-center gap-4">
+                <span className={`hidden md:inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${roleColors[user.role]}`}>
+                    {user.role === 'SYSTEM_ADMIN' ? 'Sys Admin' : user.role === 'ASSOCIATION_OFFICER' ? 'Assoc. Officer' : user.role === 'CHURCH_ADMIN' ? 'Church Admin' : 'RA Member'}
+                </span>
+                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold ${statusColors[user.status]}`}>
+                    {user.status === 'ACTIVE' ? <CheckCircle className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+                    <span className="hidden sm:inline">{user.status}</span>
+                </span>
+                <ChevronRight className="w-5 h-5 text-slate-300 dark:text-slate-600 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors" />
+            </div>
+        </div>
+    );
+
     return (
-        <ProtectedRoute allowedRoles={['SYSTEM_ADMIN', 'ASSOCIATION_OFFICER', 'CHURCH_ADMIN']}>
-            <div className="space-y-5 max-w-7xl mx-auto">
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <ProtectedRoute allowedRoles={['SYSTEM_ADMIN', 'ASSOCIATION_OFFICER']}>
+            <div className="space-y-6 max-w-7xl mx-auto pb-10">
+                {/* Header Section */}
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-200">Members</h1>
-                        <p className="text-slate-400 dark:text-slate-500 text-sm mt-0.5">{users.length} registered members</p>
+                        <h1 className="text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">Members Hub</h1>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Manage all {users.length} registered members across the portal.</p>
                     </div>
                     {(allowedCreateRoles.length > 0) && (
                         <button onClick={() => { setShowCreate(true); setApiError(null); reset(); }}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 active:scale-95 self-start sm:self-auto"
+                            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-bold transition-all hover:opacity-90 active:scale-95 shadow-lg shadow-blue-500/25 sm:w-auto w-full"
                             style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}>
                             <UserPlus className="w-4 h-4" />
                             Register Member
@@ -247,162 +215,148 @@ export default function AdminUsersPage() {
                     )}
                 </div>
 
-                {/* Filters */}
-                <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-3 shadow-sm transition-colors">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <input
-                            value={search} onChange={e => setSearch(e.target.value)}
-                            placeholder="Search by name, RA number..."
-                            className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:text-slate-200 dark:placeholder-slate-500 transition-all"
-                        />
-                    </div>
-                    <div className="relative">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
-                            className="pl-9 pr-8 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 appearance-none cursor-pointer dark:text-slate-200 transition-all">
-                            <option value="">All Roles</option>
-                            <option value="RA">RA Member</option>
-                            <option value="CHURCH_ADMIN">Church Admin</option>
-                            <option value="ASSOCIATION_OFFICER">Assoc. Officer</option>
-                            <option value="SYSTEM_ADMIN">System Admin</option>
-                        </select>
-                    </div>
-                </div>
+                {/* Main Content Area */}
+                <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col min-h-[600px]">
 
-                {/* Table */}
-                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm transition-colors">
-                    {isLoading ? (
-                        <div className="p-12 text-center">
-                            <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-3" />
-                            <p className="text-slate-400 text-sm">Loading members...</p>
+                    {/* Tabs & Search Header */}
+                    <div className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4">
+                            {/* Tabs */}
+                            <div className="flex p-1 bg-slate-200/50 dark:bg-slate-800 rounded-xl self-start w-full md:w-auto overflow-x-auto custom-scrollbar">
+                                <button
+                                    onClick={() => setActiveTab('ALL')}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${activeTab === 'ALL' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                                    <List className="w-4 h-4" /> All Members
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('ROLE')}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${activeTab === 'ROLE' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                                    <Shield className="w-4 h-4" /> By Role
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('CHURCH')}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${activeTab === 'CHURCH' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                                    <Building2 className="w-4 h-4" /> By Church
+                                </button>
+                            </div>
+
+                            {/* Search */}
+                            <div className="relative w-full md:w-72 flex-shrink-0">
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <input
+                                    value={search} onChange={e => { setSearch(e.target.value); setActiveTab('ALL'); }}
+                                    placeholder="Search by name, RA#..."
+                                    className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:text-slate-200 transition-all shadow-sm"
+                                />
+                            </div>
                         </div>
-                    ) : filtered.length === 0 ? (
-                        <div className="p-12 text-center">
-                            <Users className="w-12 h-12 text-slate-200 dark:text-slate-700 mx-auto mb-3" />
-                            <p className="text-slate-500 dark:text-slate-400 font-medium">No members found</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-                                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Member</th>
-                                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden sm:table-cell">RA Number</th>
-                                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden md:table-cell">Church</th>
-                                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Role</th>
-                                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
-                                        <th className="px-5 py-3.5"></th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                                    {filtered.map(user => (
-                                        <tr key={user.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                                            <td className="px-5 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                                                        style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}>
-                                                        {user.firstName[0]}{user.lastName[0]}
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{user.firstName} {user.lastName}</p>
-                                                        <p className="text-xs text-slate-400 dark:text-slate-500 sm:hidden">{user.raNumber}</p>
-                                                    </div>
+                    </div>
+
+                    {/* View Areas */}
+                    <div className="flex-1 bg-slate-50/30 dark:bg-slate-900 overflow-y-auto">
+                        {isLoading ? (
+                            <div className="h-full flex flex-col items-center justify-center p-12">
+                                <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-4" />
+                                <p className="text-slate-500 font-medium">Loading network data...</p>
+                            </div>
+                        ) : users.length === 0 ? (
+                            <div className="h-full flex flex-col items-center justify-center p-12 text-center">
+                                <Users className="w-16 h-16 text-slate-200 dark:text-slate-800 mb-4" />
+                                <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">No Members Found</h3>
+                                <p className="text-slate-500 dark:text-slate-400 mt-1 max-w-sm">There are no members registered in the system yet. Start by registering the first user.</p>
+                            </div>
+                        ) : activeTab === 'ALL' ? (
+                            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                                {filtered.length === 0 ? (
+                                    <div className="p-12 text-center text-slate-500">No users match your search.</div>
+                                ) : (
+                                    filtered.map(user => <UserRow key={user.id} user={user} />)
+                                )}
+                            </div>
+                        ) : activeTab === 'ROLE' ? (
+                            <div className="p-6 space-y-8">
+                                {rolesGrouped.map(group => group.members.length > 0 && (
+                                    <div key={group.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center shadow-sm">
+                                                    <group.icon className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                                                 </div>
-                                            </td>
-                                            <td className="px-5 py-4 hidden sm:table-cell">
-                                                <span className="text-sm text-slate-600 dark:text-slate-400 font-mono">{user.raNumber}</span>
-                                            </td>
-                                            <td className="px-5 py-4 hidden md:table-cell">
-                                                <span className="text-sm text-slate-500 dark:text-slate-400">{user.churches?.name ?? '—'}</span>
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${roleColors[user.role] ?? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}>
-                                                    {user.role === 'SYSTEM_ADMIN' ? 'Sys Admin' :
-                                                        user.role === 'ASSOCIATION_OFFICER' ? 'Assoc. Officer' :
-                                                            user.role === 'CHURCH_ADMIN' ? 'Church Admin' : 'RA Member'}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold ${statusColors[user.status] ?? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}>
-                                                    {user.status === 'ACTIVE' ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                                                    {user.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                {/* Only SysAdmin/Assoc can suspend/activate, and users cannot suspend themselves */}
-                                                {(currentUser?.role === 'SYSTEM_ADMIN' || currentUser?.role === 'ASSOCIATION_OFFICER') && user.id !== currentUser?.id && (
-                                                    <div className="flex items-center gap-1 justify-end">
-                                                        {user.status !== 'ACTIVE' ? (
-                                                            <button onClick={() => setConfirmAction({ id: user.id, name: `${user.firstName} ${user.lastName}`, status: 'ACTIVE', actionText: 'Activate' })}
-                                                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors">
-                                                                Activate
-                                                            </button>
-                                                        ) : (
-                                                            <button onClick={() => setConfirmAction({ id: user.id, name: `${user.firstName} ${user.lastName}`, status: 'SUSPENDED', actionText: 'Suspend' })}
-                                                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">
-                                                                Suspend
-                                                            </button>
-                                                        )}
-                                                        {/* Delete button */}
-                                                        {canDeleteUser(user.role) && (
-                                                            <button
-                                                                onClick={() => setDeleteConfirm({ id: user.id, name: `${user.firstName} ${user.lastName}`, role: user.role })}
-                                                                className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors ml-1"
-                                                                title="Delete account permanently"
-                                                            >
-                                                                <Trash2 className="w-3.5 h-3.5" />
-                                                            </button>
-                                                        )}
-                                                        {/* Change Role button */}
-                                                        {getRoleOptions(user.role).length > 0 && (
-                                                            <div className="relative ml-1">
-                                                                <button
-                                                                    onClick={() => setRoleMenuOpen(roleMenuOpen === user.id ? null : user.id)}
-                                                                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
-                                                                    title="Change role"
-                                                                >
-                                                                    <UserCog className="w-3.5 h-3.5" />
-                                                                </button>
-                                                                {roleMenuOpen === user.id && (
-                                                                    <>
-                                                                        <div className="fixed inset-0 z-30" onClick={() => setRoleMenuOpen(null)} />
-                                                                        <div className="absolute right-0 top-full mt-1.5 z-40 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-1.5 min-w-[160px]">
-                                                                            <p className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Change role to</p>
-                                                                            {getRoleOptions(user.role).map(option => (
-                                                                                <button
-                                                                                    key={option.value}
-                                                                                    disabled={changeRoleMutation.isPending}
-                                                                                    onClick={() => changeRoleMutation.mutate({ id: user.id, role: option.value })}
-                                                                                    className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-700 dark:hover:text-indigo-400 transition-colors flex items-center gap-2 disabled:opacity-50"
-                                                                                >
-                                                                                    {changeRoleMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCog className="w-3 h-3 text-indigo-400" />}
-                                                                                    {option.label}
-                                                                                </button>
-                                                                            ))}
-                                                                        </div>
-                                                                    </>
-                                                                )}
-                                                            </div>
-                                                        )}
+                                                <h3 className="font-bold text-slate-800 dark:text-slate-100">{group.label}</h3>
+                                            </div>
+                                            <span className="px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300">
+                                                {group.members.length}
+                                            </span>
+                                        </div>
+                                        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                                            {group.members.map(user => <UserRow key={user.id} user={user} />)}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {churchStats.map(church => (
+                                    <div key={church.id} className={`bg-white dark:bg-slate-900 rounded-2xl border transition-all duration-300 overflow-hidden ${expandedChurchId === church.id ? 'border-blue-300 dark:border-blue-700 shadow-md ring-4 ring-blue-50 dark:ring-blue-900/20 md:col-span-2' : 'border-slate-200 dark:border-slate-800 shadow-sm hover:border-slate-300 dark:hover:border-slate-700'}`}>
+
+                                        {/* Church Card Summary */}
+                                        <div
+                                            onClick={() => setExpandedChurchId(expandedChurchId === church.id ? null : church.id)}
+                                            className="p-5 cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                            <div className="flex items-start gap-4">
+                                                <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
+                                                    <Building2 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-extrabold text-slate-900 dark:text-slate-100 text-lg">{church.name}</h3>
+                                                    <p className="font-mono text-slate-500 dark:text-slate-400 text-sm mt-0.5">{church.code}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-6 sm:gap-8">
+                                                <div className="text-center">
+                                                    <p className="text-2xl font-black text-slate-800 dark:text-slate-200">{church.total}</p>
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total</p>
+                                                </div>
+                                                <div className="text-center">
+                                                    <p className="text-lg font-bold text-amber-600 dark:text-amber-500">{church.adminCount}</p>
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Admins</p>
+                                                </div>
+                                                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center transition-transform duration-300 ml-4 hidden sm:flex" style={{ transform: expandedChurchId === church.id ? 'rotate(90deg)' : 'rotate(0)' }}>
+                                                    <ChevronRight className="w-4 h-4 text-slate-500" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Expanded Members List */}
+                                        {expandedChurchId === church.id && (
+                                            <div className="border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 max-h-[500px] overflow-y-auto custom-scrollbar">
+                                                {church.members.length === 0 ? (
+                                                    <div className="p-8 text-center text-slate-500 text-sm">No members registered in this church yet.</div>
+                                                ) : (
+                                                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                                                        {church.members.map(user => <UserRow key={user.id} user={user} />)}
                                                     </div>
                                                 )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            {/* Create User Modal */}
-            {showCreate && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200 transition-colors">
+            {/* Member Details Modal Slide-over */}
+            {selectedUser && (
+                <MemberDetailsModal user={selectedUser} onClose={() => setSelectedUser(null)} />
+            )}
 
-                        {/* Modal Header */}
+            {/* Create User Modal (Retained Original Structure) */}
+            {showCreate && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200 transition-colors">
                         <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between flex-shrink-0">
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20"
@@ -420,7 +374,6 @@ export default function AdminUsersPage() {
                             </button>
                         </div>
 
-                        {/* Modal Body */}
                         <div className="p-8 overflow-y-auto custom-scrollbar">
                             <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
                                 {apiError && (
@@ -430,7 +383,6 @@ export default function AdminUsersPage() {
                                     </div>
                                 )}
 
-                                {/* Role Selection */}
                                 <div>
                                     <h3 className="text-sm font-bold text-slate-900 dark:text-slate-200 uppercase tracking-wider mb-3">1. Account Type</h3>
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -460,7 +412,6 @@ export default function AdminUsersPage() {
 
                                 <div className="h-px bg-slate-100 dark:bg-slate-800" />
 
-                                {/* Personal & Contact Info */}
                                 <div>
                                     <h3 className="text-sm font-bold text-slate-900 dark:text-slate-200 uppercase tracking-wider mb-4">2. Personal Information</h3>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -479,14 +430,12 @@ export default function AdminUsersPage() {
                                     </div>
                                 </div>
 
-                                {/* Conditional Fields: Church & Rank */}
                                 {(selectedRole === 'RA' || selectedRole === 'CHURCH_ADMIN') && (
                                     <>
                                         <div className="h-px bg-slate-100 dark:bg-slate-800" />
                                         <div>
                                             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-200 uppercase tracking-wider mb-4">3. Assignment Details</h3>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                                                {/* Church Field */}
                                                 {(currentUser?.role !== 'CHURCH_ADMIN') && (
                                                     <div className={selectedRole === 'CHURCH_ADMIN' ? 'sm:col-span-2' : ''}>
                                                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
@@ -509,7 +458,6 @@ export default function AdminUsersPage() {
                                                     </div>
                                                 )}
 
-                                                {/* Rank Field - For RA and Church Admin */}
                                                 {(selectedRole === 'RA' || selectedRole === 'CHURCH_ADMIN') && (
                                                     <div className={currentUser?.role === 'CHURCH_ADMIN' ? 'sm:col-span-2' : ''}>
                                                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
@@ -543,7 +491,6 @@ export default function AdminUsersPage() {
                                     {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password.message}</p>}
                                 </div>
 
-                                {/* Actions */}
                                 <div className="pt-4 flex gap-4">
                                     <button type="button" onClick={() => { setShowCreate(false); reset(); }}
                                         className="flex-1 py-3.5 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
@@ -557,87 +504,6 @@ export default function AdminUsersPage() {
                                     </button>
                                 </div>
                             </form>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Confirmation Modal */}
-            {confirmAction && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col p-6 animate-in fade-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-800">
-                        <div className="flex flex-col items-center text-center space-y-4">
-                            <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-inner ${confirmAction.status === 'SUSPENDED' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30'}`}>
-                                <AlertCircle className={`w-8 h-8 ${confirmAction.status === 'SUSPENDED' ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`} />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                    Are you absolutely sure?
-                                </h3>
-                                <p className="text-slate-500 dark:text-slate-400 text-sm mt-3 leading-relaxed">
-                                    This action will <strong className={confirmAction.status === 'SUSPENDED' ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}>{confirmAction.actionText.toLowerCase()}</strong> the account for <br />
-                                    <strong className="text-slate-800 dark:text-slate-200">{confirmAction.name}</strong>.
-                                </p>
-                                {confirmAction.status === 'SUSPENDED' && (
-                                    <p className="text-xs text-red-500/80 dark:text-red-400/80 font-medium mt-3 bg-red-50 dark:bg-red-900/10 p-2.5 rounded-lg border border-red-100 dark:border-red-900/30 inline-block font-mono">
-                                        They will immediately lose access to the portal until reactivated.
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="flex gap-3 mt-8">
-                            <button onClick={() => setConfirmAction(null)}
-                                className="flex-1 py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                                Cancel
-                            </button>
-                            <button onClick={() => {
-                                statusMutation.mutate({ id: confirmAction.id, status: confirmAction.status });
-                            }}
-                                disabled={statusMutation.isPending}
-                                className={`flex-1 py-3 px-4 rounded-xl text-white font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90 disabled:opacity-60 shadow-lg ${confirmAction.status === 'SUSPENDED' ? 'bg-red-600 hover:bg-red-700 shadow-red-500/25' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/25'
-                                    }`}>
-                                {statusMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : confirmAction.actionText}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Delete Confirmation Modal */}
-            {deleteConfirm && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col p-6 animate-in fade-in zoom-in-95 duration-200 border-2 border-red-200 dark:border-red-900/50">
-                        <div className="flex flex-col items-center text-center space-y-4">
-                            <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shadow-inner">
-                                <Trash2 className="w-8 h-8 text-red-600 dark:text-red-400" />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                    Delete Account Permanently
-                                </h3>
-                                <p className="text-slate-500 dark:text-slate-400 text-sm mt-3 leading-relaxed">
-                                    You are about to permanently delete the account for <br />
-                                    <strong className="text-slate-800 dark:text-slate-200">{deleteConfirm.name}</strong>.
-                                </p>
-                                <p className="text-xs font-mono font-semibold text-red-600 dark:text-red-400 mt-4 bg-red-50 dark:bg-red-900/20 px-3 py-2.5 rounded-lg border border-red-200 dark:border-red-800/50 leading-relaxed">
-                                    ⚠️ This action CANNOT be undone. All exam records and data associated with this account will be permanently lost.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-3 mt-8">
-                            <button onClick={() => setDeleteConfirm(null)}
-                                disabled={deleteMutation.isPending}
-                                className="flex-1 py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-60">
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => deleteMutation.mutate(deleteConfirm.id)}
-                                disabled={deleteMutation.isPending}
-                                className="flex-1 py-3 px-4 rounded-xl text-white font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90 disabled:opacity-60 shadow-lg bg-red-600 hover:bg-red-700 shadow-red-500/25">
-                                {deleteMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Trash2 className="w-4 h-4" /> Delete Permanently</>}
-                            </button>
                         </div>
                     </div>
                 </div>
