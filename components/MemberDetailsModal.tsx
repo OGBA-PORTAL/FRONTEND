@@ -118,7 +118,7 @@ export default function MemberDetailsModal({ user, onClose }: MemberDetailsModal
     };
 
     const roleOptions = getRoleOptions(user.role);
-    const dateJoined = new Date(user.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+    const dateJoined = new Date(user.createdAt).toLocaleString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">

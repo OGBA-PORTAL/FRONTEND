@@ -206,7 +206,7 @@ export default function AdminResultsPage() {
                                             <td className="px-5 py-4 hidden lg:table-cell">
                                                 <span className="text-sm text-slate-400 dark:text-slate-500">
                                                     {attempt.submittedAt
-                                                        ? new Date(attempt.submittedAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
+                                                        ? new Date(attempt.submittedAt).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
                                                         : '—'}
                                                 </span>
                                             </td>

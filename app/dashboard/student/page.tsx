@@ -195,7 +195,7 @@ export default function StudentDashboardPage() {
                                                 {statusLabel(attempt.status)}
                                             </span>
                                             <span>
-                                                {new Date(attempt.startedAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                {new Date(attempt.startedAt).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                             </span>
                                         </div>
                                     </div>
