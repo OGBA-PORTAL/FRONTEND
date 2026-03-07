@@ -12,6 +12,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import logo from '@/app/assets/ralogo.png';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { NotificationsMenu } from '@/components/NotificationsMenu';
 
 const navItems = [
     { href: '/dashboard/student', label: 'My Dashboard', icon: LayoutDashboard, exact: true },
@@ -219,7 +220,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
             {/* ─── Main ─── */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f0f4ff] dark:bg-slate-950 transition-colors">
-                <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 px-4 sm:px-6 py-3.5 flex items-center gap-3 flex-shrink-0 transition-colors"
+                <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 px-4 sm:px-6 py-3.5 flex items-center gap-3 flex-shrink-0 transition-colors relative z-50"
                     style={{ boxShadow: '0 1px 12px rgba(0,0,0,0.06)' }}>
                     <button onClick={() => setMobileOpen(true)}
                         className="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
@@ -246,9 +247,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                     <div className="ml-auto flex items-center gap-2 sm:gap-3">
                         <ThemeToggle />
 
-                        <button className="relative w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                            <Bell style={{ width: '18px', height: '18px' }} />
-                        </button>
+                        <NotificationsMenu />
 
                         <div className="relative">
                             <button onClick={() => setUserMenuOpen(!userMenuOpen)}

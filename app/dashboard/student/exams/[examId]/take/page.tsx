@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, use } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
-import { Loader2, Timer, CheckCircle, Save, AlertTriangle, ChevronRight, ChevronLeft, LayoutGrid } from 'lucide-react';
+import { Loader2, Timer, CheckCircle, Save, AlertTriangle, ChevronRight, ChevronLeft, LayoutGrid, PauseCircle } from 'lucide-react';
 import { StudentQuestion, ExamAttemptResponse } from '@/lib/types';
 import { useToast } from '@/context/ToastContext';
 
@@ -63,6 +63,7 @@ export default function TakeExamPage({ params }: { params: Promise<{ examId: str
     const [error, setError] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [endTime, setEndTime] = useState<string | null>(null);
+    const [isPaused, setIsPaused] = useState(false);
 
     // Initial Load
     useEffect(() => {
@@ -126,13 +127,33 @@ export default function TakeExamPage({ params }: { params: Promise<{ examId: str
     // Auto-save debouncer
     useEffect(() => {
         const timeout = setTimeout(() => {
-            if (Object.keys(answers).length > 0 && attemptData?.attemptId && !isSubmitting) {
+            if (Object.keys(answers).length > 0 && attemptData?.attemptId && !isSubmitting && !isPaused) {
                 saveMutation.mutate(answers);
             }
         }, 2000); // Save 2s after last change
 
         return () => clearTimeout(timeout);
-    }, [answers, attemptData?.attemptId, isSubmitting]); // Missing saveMutation in deps, but handled by reference
+    }, [answers, attemptData?.attemptId, isSubmitting, isPaused]); // Missing saveMutation in deps, but handled by reference
+
+    // Real-time Pause Polling
+    useEffect(() => {
+        if (!examId || isSubmitting) return;
+
+        const intervalId = setInterval(async () => {
+            try {
+                const res = await api.get(`/exams/${examId}/status`);
+                if (res.data?.data?.exam?.status === 'PAUSED') {
+                    setIsPaused(true);
+                } else if (res.data?.data?.exam?.status !== 'PAUSED' && isPaused) {
+                    setIsPaused(false);
+                }
+            } catch (err) {
+                console.error("Failed to poll exam status", err);
+            }
+        }, 5000); // Poll every 5 seconds
+
+        return () => clearInterval(intervalId);
+    }, [examId, isSubmitting, isPaused]);
 
     // Submit Mutation
     const submitMutation = useMutation({
@@ -187,6 +208,23 @@ export default function TakeExamPage({ params }: { params: Promise<{ examId: str
             <div className="h-[80vh] flex flex-col items-center justify-center">
                 <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
                 <p className="text-slate-500 animate-pulse">Preparing your exam...</p>
+            </div>
+        );
+    }
+
+    if (isPaused) {
+        return (
+            <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl border border-slate-200 dark:border-slate-800">
+                    <div className="w-20 h-20 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <PauseCircle className="w-10 h-10 text-amber-600 dark:text-amber-500 animate-[pulse_2s_cubic-bezier(0.4,0,0.6,1)_infinite]" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-3">Exam Paused</h2>
+                    <p className="text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">
+                        An administrator has temporarily paused this exam. Your timer is stopped, and you cannot submit or answer questions right now. Please wait until it resumes.
+                    </p>
+                    <Loader2 className="w-6 h-6 text-slate-400 animate-spin mx-auto" />
+                </div>
             </div>
         );
     }

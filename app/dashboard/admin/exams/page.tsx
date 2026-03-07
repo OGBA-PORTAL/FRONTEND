@@ -10,7 +10,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
     BookOpen, Plus, Search, Loader2, X, Clock,
-    CheckCircle, FileText, Send, Eye, Users, Award, Trash2, AlertTriangle, PauseCircle, PlayCircle
+    CheckCircle, FileText, Send, Eye, Users, Award, Trash2, AlertTriangle, PauseCircle, PlayCircle, Undo2
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/context/ToastContext';
@@ -103,6 +103,15 @@ export default function AdminExamsPage() {
             toast.success('Results Released', 'Exam results are now visible to all participants.');
         },
         onError: (err: any) => toast.error('Release Failed', err?.response?.data?.message ?? 'Could not release results'),
+    });
+
+    const retractMutation = useMutation({
+        mutationFn: (id: string) => api.patch(`/exams/${id}/retract`),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['admin-exams'] });
+            toast.success('Results Retracted', 'Exam results have been hidden from students.');
+        },
+        onError: (err: any) => toast.error('Retract Failed', err?.response?.data?.message ?? 'Could not retract results'),
     });
 
     const deleteMutation = useMutation({
@@ -264,10 +273,13 @@ export default function AdminExamsPage() {
                                                 </button>
                                             )}
                                             {exam.resultsReleased && (
-                                                <span className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
-                                                    <CheckCircle className="w-3.5 h-3.5" />
-                                                    Results Released
-                                                </span>
+                                                <button onClick={() => retractMutation.mutate(exam.id)}
+                                                    disabled={retractMutation.isPending}
+                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors"
+                                                    title="Undo Results Release">
+                                                    <Undo2 className="w-3.5 h-3.5" />
+                                                    Retract Results
+                                                </button>
                                             )}
                                             {/* Delete trigger — always visible */}
                                             <button

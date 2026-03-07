@@ -1,15 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, UserRole, Church, Rank } from '@/lib/types';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
-import { X, Shield, Building2, BookOpen, CheckCircle, XCircle, AlertCircle, Trash2, UserCog, Calendar, Loader2 } from 'lucide-react';
+import { X, Shield, Building2, BookOpen, CheckCircle, XCircle, AlertCircle, Trash2, UserCog, Calendar, Loader2, Edit3, Save } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 
 interface MemberDetailsModalProps {
     user: User;
     onClose: () => void;
 }
+
+const editProfileSchema = z.object({
+    firstName: z.string().min(1, 'First name is required'),
+    lastName: z.string().min(1, 'Last name is required'),
+    rankId: z.string().optional(),
+});
+type EditProfileForm = z.infer<typeof editProfileSchema>;
 
 const roleColors: Record<string, string> = {
     RA: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
@@ -29,9 +39,34 @@ export default function MemberDetailsModal({ user, onClose }: MemberDetailsModal
     const qc = useQueryClient();
     const toast = useToast();
 
-    // Local State for confirmations inside the modal
     const [confirmAction, setConfirmAction] = useState<'SUSPEND' | 'ACTIVATE' | 'DELETE' | null>(null);
     const [isChangingRole, setIsChangingRole] = useState(false);
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+
+    // Fetch ranks for the edit form
+    const { data: ranks = [] } = useQuery<Rank[]>({
+        queryKey: ['ranks'],
+        queryFn: async () => (await api.get('/ranks')).data.data.ranks,
+        enabled: isEditingProfile && user.role === 'RA',
+    });
+
+    const { register, handleSubmit, reset, formState: { errors } } = useForm<EditProfileForm>({
+        resolver: zodResolver(editProfileSchema),
+        defaultValues: {
+            firstName: user.firstName,
+            lastName: user.lastName,
+            rankId: user.rankId ?? undefined,
+        }
+    });
+
+    // Reset form if the 'user' prop somehow changes or when we open edit mode
+    useEffect(() => {
+        reset({
+            firstName: user.firstName,
+            lastName: user.lastName,
+            rankId: user.rankId ?? undefined,
+        });
+    }, [user, reset, isEditingProfile]);
 
     const statusMutation = useMutation({
         mutationFn: ({ id, status }: { id: string; status: string }) =>
@@ -42,7 +77,7 @@ export default function MemberDetailsModal({ user, onClose }: MemberDetailsModal
             const action = vars.status === 'ACTIVE' ? 'Activated' : 'Suspended';
             toast.success(`Account ${action}`, `The user account has been ${action.toLowerCase()} successfully.`);
             setConfirmAction(null);
-            onClose(); // Close modal on success
+            onClose();
         },
         onError: (err: any) => {
             toast.error('Action Failed', err?.response?.data?.message ?? 'Could not update account status.');
@@ -81,7 +116,23 @@ export default function MemberDetailsModal({ user, onClose }: MemberDetailsModal
         }
     });
 
-    // Permission Checkers
+    const editProfileMutation = useMutation({
+        mutationFn: (data: EditProfileForm) => api.patch(`/users/${user.id}/admin`, data),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['admin-users'] });
+            qc.invalidateQueries({ queryKey: ['church-users'] });
+            setIsEditingProfile(false);
+            toast.success('Profile Updated', 'The member profile has been updated successfully.');
+            // We normally would update the local `user` reference here, but since the list behind is invalidated, closing is smoother, or just letting the parent pass the new user in. We'll just stay on this screen and let the cache update propagate down eventually if we don't close. Alternatively, we close the modal.
+            onClose();
+        },
+        onError: (err: any) => {
+            toast.error('Update Failed', err?.response?.data?.message ?? 'Failed to update member profile.');
+        }
+    });
+
+    const canEditProfile = currentUser?.role === 'SYSTEM_ADMIN' || currentUser?.role === 'ASSOCIATION_OFFICER';
+
     const canManageStatus = (() => {
         if (currentUser?.id === user.id) return false;
         if (currentUser?.role === 'SYSTEM_ADMIN') return true;
@@ -129,6 +180,11 @@ export default function MemberDetailsModal({ user, onClose }: MemberDetailsModal
                     <button onClick={onClose} className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-black/20 text-white hover:bg-black/40 transition-colors backdrop-blur-md">
                         <X className="w-4 h-4" />
                     </button>
+                    {canEditProfile && !isEditingProfile && (
+                        <button onClick={() => setIsEditingProfile(true)} className="absolute top-4 right-14 h-8 px-3 flex items-center gap-1.5 rounded-full bg-white/20 text-white text-xs font-semibold hover:bg-white/30 transition-colors backdrop-blur-md">
+                            <Edit3 className="w-3.5 h-3.5" /> Edit Profile
+                        </button>
+                    )}
                     <div className="absolute -bottom-12 left-6">
                         <div className="w-24 h-24 rounded-2xl bg-white dark:bg-slate-800 p-1.5 shadow-xl">
                             <div className="w-full h-full rounded-xl flex items-center justify-center text-white text-3xl font-bold"
@@ -141,16 +197,88 @@ export default function MemberDetailsModal({ user, onClose }: MemberDetailsModal
 
                 {/* Body Content */}
                 <div className="pt-16 pb-8 px-6 sm:px-8 overflow-y-auto custom-scrollbar flex-1">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                        <div>
-                            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{user.firstName} {user.lastName}</h2>
-                            <p className="text-sm font-mono text-slate-500 dark:text-slate-400 mt-1">{user.raNumber}</p>
-                        </div>
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold ${statusColors[user.status] ?? 'bg-slate-100 text-slate-600'}`}>
-                            {user.status === 'ACTIVE' ? <CheckCircle className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
-                            {user.status}
-                        </span>
-                    </div>
+                    {!isEditingProfile ? (
+                        <>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{user.firstName} {user.lastName}</h2>
+                                    <p className="text-sm font-mono text-slate-500 dark:text-slate-400 mt-1">{user.raNumber}</p>
+                                </div>
+                                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold ${statusColors[user.status] ?? 'bg-slate-100 text-slate-600'}`}>
+                                    {user.status === 'ACTIVE' ? <CheckCircle className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                                    {user.status}
+                                </span>
+                            </div>
+                        </>
+                    ) : (
+                        <form id="editProfileForm" onSubmit={handleSubmit((d) => editProfileMutation.mutate(d))} className="space-y-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Edit Profile</h2>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Update {user.firstName}'s information</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">First Name</label>
+                                    <input
+                                        {...register('firstName')}
+                                        className={`w-full px-4 py-2.5 rounded-xl border ${errors.firstName ? 'border-red-300 bg-red-50 dark:border-red-900/30' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 hover:bg-white'} outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all dark:text-slate-200`}
+                                        placeholder="e.g. John"
+                                    />
+                                    {errors.firstName && <p className="text-sm text-red-500 mt-1">{errors.firstName.message}</p>}
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Last Name</label>
+                                    <input
+                                        {...register('lastName')}
+                                        className={`w-full px-4 py-2.5 rounded-xl border ${errors.lastName ? 'border-red-300 bg-red-50 dark:border-red-900/30' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 hover:bg-white'} outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all dark:text-slate-200`}
+                                        placeholder="e.g. Doe"
+                                    />
+                                    {errors.lastName && <p className="text-sm text-red-500 mt-1">{errors.lastName.message}</p>}
+                                </div>
+                            </div>
+
+                            {user.role === 'RA' && (
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Current Rank</label>
+                                    <select
+                                        {...register('rankId')}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 hover:bg-white outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer dark:text-slate-100 dark:hover:bg-slate-700"
+                                    >
+                                        <option value="" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">Select current rank</option>
+                                        {ranks.map(r => (
+                                            <option key={r.id} value={r.id} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">{r.name}</option>
+                                        ))}
+                                    </select>
+                                    {errors.rankId && <p className="text-sm text-red-500 mt-1">{errors.rankId.message}</p>}
+                                </div>
+                            )}
+
+                            <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 mt-6">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        reset();
+                                        setIsEditingProfile(false);
+                                    }}
+                                    className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={editProfileMutation.isPending}
+                                    className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition shadow-md shadow-blue-500/20 flex items-center justify-center gap-2"
+                                >
+                                    {editProfileMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    )}
 
                     <div className="space-y-6">
                         {/* Info Grid */}
@@ -286,6 +414,6 @@ export default function MemberDetailsModal({ user, onClose }: MemberDetailsModal
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

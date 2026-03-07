@@ -47,6 +47,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     useEffect(() => {
         fetchMe();
+
+        // Silent interval to instantly catch account suspensions or token invalidations
+        const intervalId = setInterval(async () => {
+            const currentToken = localStorage.getItem('token');
+            if (currentToken) {
+                try {
+                    await api.get('/users/me'); // The authMiddleware throws 401 if suspended
+                } catch {
+                    // Central interceptor handles the logout logic on 401
+                    clearInterval(intervalId);
+                }
+            }
+        }, 5000); // 5 seconds
+
+        return () => clearInterval(intervalId);
     }, [fetchMe]);
 
     const login = async (raNumber: string, password: string) => {
