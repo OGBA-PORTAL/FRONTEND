@@ -259,21 +259,10 @@ export default function StudentExamsPage() {
                                     <div className="p-4">
                                         {completed ? (
                                             <div className="flex items-center justify-between">
-                                                {attempt!.score !== null ? (
-                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold ${attempt!.passed ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30' : 'bg-red-50 text-red-600 dark:bg-red-900/30'}`}>
-                                                        <CheckCircle className="w-3.5 h-3.5" />
-                                                        {attempt!.passed ? 'Passed' : 'Failed'} • {attempt!.score}%
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
-                                                        <CheckCircle className="w-3.5 h-3.5" />
-                                                        Submitted for Grading
-                                                    </span>
-                                                )}
-                                                <Link href="/dashboard/student/results"
-                                                    className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline">
-                                                    View Status →
-                                                </Link>
+                                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                                                    <CheckCircle className="w-3.5 h-3.5" />
+                                                    Submitted for Grading
+                                                </span>
                                             </div>
                                         ) : started ? (
                                             <Link href={`/dashboard/student/exams/${exam.id}/take`}

@@ -4,7 +4,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { DashboardStats } from '@/lib/types';
-import { Users, Church, BookOpen, BarChart3, TrendingUp, Award, ArrowUpRight, Plus } from 'lucide-react';
+import { Users, Church, BookOpen, BarChart3, TrendingUp, Award, ArrowUpRight, Plus, Shield, Crown } from 'lucide-react';
 import Link from 'next/link';
 
 interface StatCardProps {
@@ -41,8 +41,14 @@ const StatCard = ({ label, value, icon: Icon, gradient, iconBg, change }: StatCa
     </div>
 );
 
+interface DashboardData extends DashboardStats {
+    totalChurchAdmins?: number;
+    totalMembers?: number;
+    rankBreakdown?: { id: string; name: string; level: number; count: number }[];
+}
+
 export default function AdminDashboardPage() {
-    const { data, isLoading } = useQuery<DashboardStats>({
+    const { data, isLoading } = useQuery<DashboardData>({
         queryKey: ['dashboard-stats'],
         queryFn: async () => {
             const res = await api.get('/results/dashboard/stats');
@@ -112,6 +118,67 @@ export default function AdminDashboardPage() {
                         />
                     </div>
                 )}
+
+                {/* Members Hub */}
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden transition-colors"
+                    style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+                    <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+                        <Users className="w-5 h-5 text-blue-500" />
+                        <h2 className="font-bold text-slate-800 dark:text-slate-200">Members Hub</h2>
+                    </div>
+                    {isLoading ? (
+                        <div className="p-6 grid grid-cols-3 gap-4">
+                            {[...Array(3)].map((_, i) => <div key={i} className="h-24 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse" />)}
+                        </div>
+                    ) : (
+                        <div className="p-6 space-y-6">
+                            {/* Role Summary Cards */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="rounded-2xl p-4 bg-gradient-to-br from-blue-600 to-blue-800 text-white relative overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(37,99,235,0.2)' }}>
+                                    <div className="absolute -right-3 -top-3 w-14 h-14 rounded-full bg-white/10" />
+                                    <Users className="w-5 h-5 text-white/70 mb-2" />
+                                    <p className="text-3xl font-black">{data?.totalRAs ?? 0}</p>
+                                    <p className="text-white/70 text-xs mt-1 font-medium">Regular Ambassadors (RAs)</p>
+                                </div>
+                                <div className="rounded-2xl p-4 bg-gradient-to-br from-amber-500 to-orange-600 text-white relative overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(245,158,11,0.2)' }}>
+                                    <div className="absolute -right-3 -top-3 w-14 h-14 rounded-full bg-white/10" />
+                                    <Shield className="w-5 h-5 text-white/70 mb-2" />
+                                    <p className="text-3xl font-black">{data?.totalChurchAdmins ?? 0}</p>
+                                    <p className="text-white/70 text-xs mt-1 font-medium">Church Administrators</p>
+                                </div>
+                                <div className="rounded-2xl p-4 bg-gradient-to-br from-emerald-500 to-emerald-700 text-white relative overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(16,185,129,0.2)' }}>
+                                    <div className="absolute -right-3 -top-3 w-14 h-14 rounded-full bg-white/10" />
+                                    <Crown className="w-5 h-5 text-white/70 mb-2" />
+                                    <p className="text-3xl font-black">{data?.totalMembers ?? 0}</p>
+                                    <p className="text-white/70 text-xs mt-1 font-medium">Total Members</p>
+                                </div>
+                            </div>
+                            {/* Rank Breakdown */}
+                            {(data?.rankBreakdown?.length ?? 0) > 0 && (
+                                <div>
+                                    <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">RA Members by Rank</h3>
+                                    <div className="space-y-2">
+                                        {data!.rankBreakdown!.map(rank => (
+                                            <div key={rank.id} className="flex items-center gap-3">
+                                                <div className="flex items-center gap-2 w-40 flex-shrink-0">
+                                                    <span className="w-6 h-6 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-black flex items-center justify-center">{rank.level}</span>
+                                                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate">{rank.name}</span>
+                                                </div>
+                                                <div className="flex-1 h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-700"
+                                                        style={{ width: `${data!.totalRAs! > 0 ? Math.round((rank.count / data!.totalRAs!) * 100) : 0}%` }}
+                                                    />
+                                                </div>
+                                                <span className="text-sm font-bold text-slate-700 dark:text-slate-300 w-8 text-right">{rank.count}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
 
                 {/* Quick Actions + Info */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
