@@ -377,12 +377,18 @@ export default function TakeExamPage({ params }: { params: Promise<{ examId: str
             </main>
 
             {/* Mobile Footer for Submit */}
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 sm:hidden z-20 flex items-center justify-between gap-4 transition-colors">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 sm:hidden z-20 flex items-center justify-between gap-4 transition-colors shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
                 <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                     {answeredCount}/{questions.length} completed
                 </div>
-                {/* Only show Submit if on last question or any time? Let's show Next/Prev mostly, creating clutter with Submit here. */}
-                {/* Actually, let the main buttons handle flow. Maybe just progress here. */}
+                <button
+                    onClick={() => submitMutation.mutate()}
+                    disabled={isSubmitting}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 active:scale-95 disabled:opacity-50 shadow-md shadow-blue-500/20"
+                    style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}>
+                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                    Submit Exam
+                </button>
             </div>
         </div>
 

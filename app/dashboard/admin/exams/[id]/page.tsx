@@ -249,36 +249,52 @@ export default function ExamDetailPage() {
                         </div>
                     ) : (
                         <div className="divide-y divide-slate-50 dark:divide-slate-800">
-                            {questions.map((q, i) => (
-                                <div key={q.id} className="px-5 py-4">
-                                    <div className="flex items-start gap-3">
-                                        <span className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
-                                            {i + 1}
-                                        </span>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2">{q.text}</p>
-                                            <div className="grid grid-cols-2 gap-1.5">
-                                                {(['A', 'B', 'C', 'D'] as const).map((opt, optIndex) => (
-                                                    <div key={opt} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs ${q.correctAnswer === opt
-                                                        ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-semibold'
-                                                        : 'bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400'
-                                                        }`}>
-                                                        <span className="font-bold">{opt}.</span>
-                                                        <span>{Array.isArray(q.options) ? q.options[optIndex] : (q.options as Record<string, string>)[opt]}</span>
-                                                        {q.correctAnswer === opt && <CheckCircle className="w-3 h-3 ml-auto" />}
-                                                    </div>
-                                                ))}
+                            {questions.map((q, i) => {
+                                // Maps 0->A, 1->B, 2->C, 3->D
+                                const correctLetter = q.correctAnswer || (q as any).correctOption !== undefined ? ['A', 'B', 'C', 'D'][(q as any).correctOption] : undefined;
+
+                                return (
+                                    <div key={q.id} className="px-5 py-4">
+                                        <div className="flex items-start gap-3">
+                                            <span className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                {i + 1}
+                                            </span>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2">{q.text}</p>
+                                                <div className="flex items-center gap-2 mb-3 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-2 rounded-lg border border-emerald-100 dark:border-emerald-800/50 w-fit">
+                                                    <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                                                        Correct Answer ({correctLetter}):
+                                                    </span>
+                                                    <span className="text-xs text-emerald-800 dark:text-emerald-300 font-medium">
+                                                        {Array.isArray(q.options)
+                                                            ? q.options[['A', 'B', 'C', 'D'].indexOf(correctLetter as string)]
+                                                            : (q.options as Record<string, string>)[correctLetter as string]}
+                                                    </span>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-1.5">
+                                                    {(['A', 'B', 'C', 'D'] as const).map((opt, optIndex) => (
+                                                        <div key={opt} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs ${correctLetter === opt
+                                                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-semibold'
+                                                            : 'bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400'
+                                                            }`}>
+                                                            <span className="font-bold">{opt}.</span>
+                                                            <span>{Array.isArray(q.options) ? q.options[optIndex] : (q.options as Record<string, string>)[opt]}</span>
+                                                            {correctLetter === opt && <CheckCircle className="w-3 h-3 ml-auto" />}
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
+                                            {exam.status === 'DRAFT' && (
+                                                <button onClick={() => deleteQuestionMutation.mutate(q.id)}
+                                                    className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 dark:hover:text-red-400 transition-colors flex-shrink-0">
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
                                         </div>
-                                        {exam.status === 'DRAFT' && (
-                                            <button onClick={() => deleteQuestionMutation.mutate(q.id)}
-                                                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 dark:hover:text-red-400 transition-colors flex-shrink-0">
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                            </button>
-                                        )}
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>

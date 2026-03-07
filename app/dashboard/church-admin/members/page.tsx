@@ -93,8 +93,13 @@ export default function ChurchMembersPage() {
             qc.invalidateQueries({ queryKey: ['church-members'] });
             setShowGlobalBulk(false);
             setBulkConfirmOptions(null);
-            const count = res.data?.data?.updatedCount || vars.userIds.length;
-            toast.success('Bulk Update Complete', `Successfully ${vars.status === 'ACTIVE' ? 'activated' : 'suspended'} ${count} members.`);
+            const updatedCount = res.data?.data?.updatedCount;
+            const count = updatedCount !== undefined ? updatedCount : vars.userIds.length;
+            if (vars.status === 'ACTIVE') {
+                toast.success('Bulk Update Complete', `Successfully activated ${count} members.`);
+            } else {
+                toast.error('Bulk Update Complete', `Successfully suspended ${count} members.`);
+            }
         },
         onError: (err: any) => {
             toast.error('Bulk Update Failed', err?.response?.data?.message ?? 'Could not complete bulk update');
@@ -102,9 +107,15 @@ export default function ChurchMembersPage() {
     });
 
     const handleGlobalBulkAction = (status: 'ACTIVE' | 'SUSPENDED') => {
-        // Find all RAs in this church
-        const targetIds = members.filter(u => u.role === 'RA').map(u => u.id);
-        if (targetIds.length === 0) return toast.error('No Targets', 'No RA members found to update.');
+        // Find all RAs in this church, skip those already in target state
+        const targetIds = members.filter(u => {
+            if (u.role !== 'RA') return false;
+            if (status === 'ACTIVE' && u.status === 'ACTIVE') return false;
+            if (status === 'SUSPENDED' && u.status === 'SUSPENDED') return false;
+            return true;
+        }).map(u => u.id);
+
+        if (targetIds.length === 0) return toast.error('No Targets', `No qualifying RA members found to ${status.toLowerCase()}.`);
 
         setBulkConfirmOptions({
             isOpen: true,

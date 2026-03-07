@@ -155,8 +155,13 @@ export default function AdminUsersPage() {
             qc.invalidateQueries({ queryKey: ['admin-users'] });
             setShowGlobalBulk(false);
             setBulkConfirmOptions(null);
-            const count = res.data?.data?.updatedCount || vars.userIds.length;
-            toast.success('Bulk Update Complete', `Successfully ${vars.status === 'ACTIVE' ? 'activated' : 'suspended'} ${count} members.`);
+            const updatedCount = res.data?.data?.updatedCount;
+            const count = updatedCount !== undefined ? updatedCount : vars.userIds.length;
+            if (vars.status === 'ACTIVE') {
+                toast.success('Bulk Update Complete', `Successfully activated ${count} members.`);
+            } else {
+                toast.error('Bulk Update Complete', `Successfully suspended ${count} members.`);
+            }
         },
         onError: (err: any) => {
             toast.error('Bulk Update Failed', err?.response?.data?.message ?? 'Could not complete bulk update');
@@ -164,9 +169,16 @@ export default function AdminUsersPage() {
     });
 
     const handleGlobalBulkAction = (status: 'ACTIVE' | 'SUSPENDED') => {
-        // Find all RAs
-        const targetIds = users.filter(u => u.role === 'RA').map(u => u.id);
-        if (targetIds.length === 0) return toast.error('No Targets', 'No RA members found to update.');
+        // Find all RAs (Skip those already in the target status or pending if suspending)
+        const targetIds = users.filter(u => {
+            if (u.role !== 'RA') return false;
+
+            if (status === 'ACTIVE' && u.status === 'ACTIVE') return false;
+            if (status === 'SUSPENDED' && u.status === 'SUSPENDED') return false;
+            return true;
+        }).map(u => u.id);
+
+        if (targetIds.length === 0) return toast.error('No Targets', `No qualifying RA members found to ${status.toLowerCase()}.`);
 
         setBulkConfirmOptions({
             isOpen: true,
@@ -179,8 +191,16 @@ export default function AdminUsersPage() {
 
     const handleChurchBulkAction = (churchId: string, status: 'ACTIVE' | 'SUSPENDED', e: React.MouseEvent) => {
         e.stopPropagation();
-        const targetIds = users.filter(u => u.churchId === churchId && u.role === 'RA').map(u => u.id);
-        if (targetIds.length === 0) return toast.error('No Targets', 'No RA members found in this church.');
+
+        // Find targetable RAs in this church
+        const targetIds = users.filter(u => {
+            if (u.churchId !== churchId || u.role !== 'RA') return false;
+            if (status === 'ACTIVE' && u.status === 'ACTIVE') return false;
+            if (status === 'SUSPENDED' && u.status === 'SUSPENDED') return false;
+            return true;
+        }).map(u => u.id);
+
+        if (targetIds.length === 0) return toast.error('No Targets', `No qualifying RA members found in this church to ${status.toLowerCase()}.`);
 
         const church = churches.find(c => c.id === churchId);
 
