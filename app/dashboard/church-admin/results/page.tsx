@@ -40,9 +40,14 @@ export default function ChurchAdminResultsPage() {
     const filtered = attempts.filter((a: any) => {
         const name = `${a.users?.firstName ?? ''} ${a.users?.lastName ?? ''} ${a.exams?.title ?? ''}`.toLowerCase();
         const matchSearch = search === '' || name.includes(search.toLowerCase());
+
+        const isPassed = a.score !== null && a.exams?.passMark !== undefined
+            ? a.score >= a.exams.passMark
+            : !!a.passed;
+
         const matchFilter = filter === '' ||
-            (filter === 'PASSED' && a.passed) ||
-            (filter === 'FAILED' && !a.passed);
+            (filter === 'PASSED' && isPassed) ||
+            (filter === 'FAILED' && !isPassed && a.submittedAt);
         return matchSearch && matchFilter;
     });
 
@@ -83,53 +88,61 @@ export default function ChurchAdminResultsPage() {
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {filtered.map((result: any) => (
-                            <div key={result.id} className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 flex items-center gap-4 transition-colors"
-                                style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${result.passed ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
-                                    {result.passed
-                                        ? <CheckCircle className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-                                        : <XCircle className="w-6 h-6 text-red-500 dark:text-red-400" />
-                                    }
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="font-bold text-slate-800 dark:text-slate-200 text-sm truncate">
-                                            {result.users?.firstName} {result.users?.lastName}
-                                        </span>
-                                        <span className="text-xs text-slate-400 dark:text-slate-500 font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-                                            {result.users?.raNumber}
-                                        </span>
+                        {filtered.map((result: any) => {
+                            const isPassed = result.score !== null && result.exams?.passMark !== undefined
+                                ? result.score >= result.exams.passMark
+                                : !!result.passed;
+
+                            return (
+                                <div key={result.id} className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-5 sm:items-center justify-between hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors"
+                                    style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+                                    <div className="flex items-start gap-4 flex-1">
+                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isPassed ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-red-100 dark:bg-red-900/30 text-red-500 dark:text-red-400'}`}>
+                                            {isPassed
+                                                ? <CheckCircle className="w-6 h-6" />
+                                                : <XCircle className="w-6 h-6" />
+                                            }
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="font-bold text-slate-800 dark:text-slate-200 text-sm truncate">
+                                                    {result.users?.firstName} {result.users?.lastName}
+                                                </span>
+                                                <span className="text-xs text-slate-400 dark:text-slate-500 font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                                                    {result.users?.raNumber}
+                                                </span>
+                                            </div>
+                                            <p className="font-medium text-slate-600 dark:text-slate-400 text-xs truncate">
+                                                {result.exams?.title ?? 'Exam'}
+                                            </p>
+                                            <div className="flex items-center gap-3 mt-2 flex-wrap">
+                                                <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${isPassed ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
+                                                    {isPassed ? 'Passed' : 'Failed'}
+                                                </span>
+                                                {result.submittedAt && (
+                                                    <span className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
+                                                        <Clock className="w-3 h-3" />
+                                                        {new Date(result.submittedAt).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <p className="font-medium text-slate-600 dark:text-slate-400 text-xs truncate">
-                                        {result.exams?.title ?? 'Exam'}
-                                    </p>
-                                    <div className="flex items-center gap-3 mt-2 flex-wrap">
-                                        <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${result.passed ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
-                                            {result.passed ? 'Passed' : 'Failed'}
-                                        </span>
-                                        {result.submittedAt && (
-                                            <span className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
-                                                <Clock className="w-3 h-3" />
-                                                {new Date(result.submittedAt).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                            </span>
-                                        )}
+                                    <div className="flex items-center gap-4 text-right flex-shrink-0">
+                                        <div className={`text-2xl font-black ${isPassed ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+                                            {result.score ?? 0}%
+                                        </div>
+                                        <button
+                                            onClick={() => handleReview(result.id)}
+                                            className="p-2 ml-2 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                                            title="Detailed Review"
+                                        >
+                                            <Eye className="w-5 h-5" />
+                                        </button>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-4 text-right flex-shrink-0">
-                                    <div className={`text-2xl font-black ${result.passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
-                                        {result.score ?? 0}%
-                                    </div>
-                                    <button
-                                        onClick={() => handleReview(result.id)}
-                                        className="p-2 ml-2 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-                                        title="Detailed Review"
-                                    >
-                                        <Eye className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
 

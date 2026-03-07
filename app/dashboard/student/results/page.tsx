@@ -16,7 +16,11 @@ export default function StudentResultsPage() {
     });
 
     const completed = attempts.filter(a => a.submittedAt || a.completedAt);
-    const passed = completed.filter(a => a.passed).length;
+    const passed = completed.filter(a => {
+        return a.score !== null && a.exams?.passMark !== undefined
+            ? a.score >= a.exams.passMark
+            : !!a.passed;
+    }).length;
     const passRate = completed.length > 0 ? Math.round((passed / completed.length) * 100) : 0;
 
     return (
