@@ -73,8 +73,8 @@ export default function StudentResultsPage() {
                                                 {attempt.exams?.title ?? 'Exam'}
                                             </p>
                                             <div className="flex items-center gap-3 mt-1">
-                                                <span className={`text-xs font-semibold ${attempt.score !== null ? (attempt.passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400') : 'text-blue-600 dark:text-blue-400'}`}>
-                                                    {attempt.statusDisplay || 'Submitted'}
+                                                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                                                    Submitted
                                                 </span>
                                                 {(attempt.submittedAt || attempt.completedAt) && (
                                                     <span className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1">
@@ -88,15 +88,9 @@ export default function StudentResultsPage() {
                                         </div>
                                     </div>
                                     <div className="text-right flex-shrink-0">
-                                        {attempt.score !== null ? (
-                                            <span className={`text-xl font-black ${attempt.passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
-                                                {attempt.score}%
-                                            </span>
-                                        ) : (
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
-                                                Pending Review
-                                            </span>
-                                        )}
+                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                                            Submitted for Grading
+                                        </span>
                                     </div>
                                 </div>
                             ))}
