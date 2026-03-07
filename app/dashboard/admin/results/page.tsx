@@ -83,8 +83,17 @@ export default function AdminResultsPage() {
         return matchSearch && matchFilter;
     });
 
-    const totalPassed = attempts.filter(a => a.passed).length;
-    const totalFailed = attempts.filter(a => a.submittedAt && !a.passed).length;
+    const totalPassed = attempts.filter(a => {
+        return a.score !== null && a.exams?.passMark !== undefined
+            ? a.score >= a.exams.passMark
+            : !!a.passed;
+    }).length;
+    const totalFailed = attempts.filter(a => {
+        if (!a.submittedAt) return false;
+        return a.score !== null && a.exams?.passMark !== undefined
+            ? a.score < a.exams.passMark
+            : !a.passed;
+    }).length;
     const passRate = attempts.length > 0 ? Math.round((totalPassed / attempts.length) * 100) : 0;
 
     return (
