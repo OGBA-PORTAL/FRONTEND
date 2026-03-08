@@ -74,7 +74,11 @@ export default function ChurchMembersPage() {
     });
 
     const registerMutation = useMutation({
-        mutationFn: (data: RegisterForm) => api.post('/auth/signup', { ...data, role: 'RA' }), // Church admins can only register RAs via this simplified form
+        mutationFn: (data: RegisterForm) => {
+            const payload: any = { ...data, role: 'RA' };
+            if (!payload.rankId) payload.rankId = null;
+            return api.post('/auth/signup', payload);
+        },
         onSuccess: (_, vars) => {
             qc.invalidateQueries({ queryKey: ['church-members'] });
             setShowRegister(false);
@@ -352,7 +356,7 @@ export default function ChurchMembersPage() {
                                         <Award className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                         <select {...register('rankId')}
                                             className="w-full pl-10 pr-4 py-3 border-2 border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 appearance-none bg-white transition-all cursor-pointer dark:text-slate-200">
-                                            <option value="">— No rank yet —</option>
+                                            <option value="">None / N/A (Candidate)</option>
                                             {ranks.map((r: Rank) => (
                                                 <option key={r.id} value={r.id}>{r.name}</option>
                                             ))}

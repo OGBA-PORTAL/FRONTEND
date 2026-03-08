@@ -64,7 +64,7 @@ export default function MemberDetailsModal({ user, onClose }: MemberDetailsModal
         reset({
             firstName: user.firstName,
             lastName: user.lastName,
-            rankId: user.rankId ?? undefined,
+            rankId: user.rankId ?? '',
         });
     }, [user, reset, isEditingProfile]);
 
@@ -117,7 +117,12 @@ export default function MemberDetailsModal({ user, onClose }: MemberDetailsModal
     });
 
     const editProfileMutation = useMutation({
-        mutationFn: (data: EditProfileForm) => api.patch(`/users/${user.id}/admin`, data),
+        mutationFn: (data: EditProfileForm) => {
+            const payload: any = { ...data };
+            if (!payload.rankId) payload.rankId = null;
+            if (!payload.churchId) payload.churchId = null;
+            return api.patch(`/users/${user.id}/admin`, payload);
+        },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['admin-users'] });
             qc.invalidateQueries({ queryKey: ['church-users'] });
@@ -248,7 +253,7 @@ export default function MemberDetailsModal({ user, onClose }: MemberDetailsModal
                                         {...register('rankId')}
                                         className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 hover:bg-white outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer dark:text-slate-100 dark:hover:bg-slate-700"
                                     >
-                                        <option value="" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">Select current rank</option>
+                                        <option value="" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">N/A (Candidate)</option>
                                         {ranks.map(r => (
                                             <option key={r.id} value={r.id} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">{r.name}</option>
                                         ))}
@@ -309,7 +314,7 @@ export default function MemberDetailsModal({ user, onClose }: MemberDetailsModal
                                     <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Rank</span>
                                 </div>
                                 <p className="text-sm font-medium text-slate-800 dark:text-slate-300">
-                                    {user.ranks ? user.ranks.name : 'N/A'}
+                                    {user.ranks ? user.ranks.name : 'N/A (Candidate)'}
                                 </p>
                             </div>
 

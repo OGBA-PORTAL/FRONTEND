@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, use } from 'react';
+import { useState, useEffect, useCallback, use, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { Loader2, Timer, CheckCircle, Save, AlertTriangle, ChevronRight, ChevronLeft, LayoutGrid, PauseCircle } from 'lucide-react';
 import { StudentQuestion, ExamAttemptResponse } from '@/lib/types';
 import { useToast } from '@/context/ToastContext';
+import { useAuth } from '@/context/AuthContext';
 
 // Timer Component
 const ExamTimer = ({ endTime, onExpire }: { endTime: string | null; onExpire: () => void }) => {
@@ -54,6 +55,7 @@ export default function TakeExamPage({ params }: { params: Promise<{ examId: str
     const router = useRouter();
     const qc = useQueryClient();
     const toast = useToast();
+    const { logout } = useAuth();
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [attemptData, setAttemptData] = useState<ExamAttemptResponse | null>(null);
@@ -64,6 +66,10 @@ export default function TakeExamPage({ params }: { params: Promise<{ examId: str
     const [isSaving, setIsSaving] = useState(false);
     const [endTime, setEndTime] = useState<string | null>(null);
     const [isPaused, setIsPaused] = useState(false);
+
+    // Anti-Cheat Refs
+    const violationCountRef = useRef(0);
+    const hasBreached = useRef(false);
 
     // Initial Load
     useEffect(() => {

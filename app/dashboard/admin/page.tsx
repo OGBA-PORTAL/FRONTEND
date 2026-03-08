@@ -156,7 +156,7 @@ export default function AdminDashboardPage() {
                             {/* Rank Breakdown */}
                             {(data?.rankBreakdown?.length ?? 0) > 0 && (
                                 <div>
-                                    <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">RA Members by Rank</h3>
+                                    <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Members by Rank</h3>
                                     <div className="space-y-2">
                                         {data!.rankBreakdown!.map(rank => (
                                             <div key={rank.id} className="flex items-center gap-3">
@@ -167,7 +167,7 @@ export default function AdminDashboardPage() {
                                                 <div className="flex-1 h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                                                     <div
                                                         className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-700"
-                                                        style={{ width: `${data!.totalRAs! > 0 ? Math.round((rank.count / data!.totalRAs!) * 100) : 0}%` }}
+                                                        style={{ width: `${data!.totalMembers! > 0 ? Math.round((rank.count / data!.totalMembers!) * 100) : 0}%` }}
                                                     />
                                                 </div>
                                                 <span className="text-sm font-bold text-slate-700 dark:text-slate-300 w-8 text-right">{rank.count}</span>

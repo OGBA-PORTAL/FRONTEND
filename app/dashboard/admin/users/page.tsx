@@ -30,11 +30,6 @@ const createUserSchema = z.object({
     if (data.role === 'CHURCH_ADMIN' && !data.churchId) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Church is required for Church Admin", path: ["churchId"] });
     }
-    if (data.role === 'RA') {
-        if (!data.rankId) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Rank is required for RA", path: ["rankId"] });
-        }
-    }
 });
 
 type CreateUserForm = z.infer<typeof createUserSchema>;
@@ -118,7 +113,12 @@ export default function AdminUsersPage() {
     }, [currentUser, setValue, showCreate]);
 
     const createMutation = useMutation({
-        mutationFn: (data: CreateUserForm) => api.post('/auth/register', data),
+        mutationFn: (data: CreateUserForm) => {
+            const payload: any = { ...data };
+            if (!payload.rankId) payload.rankId = null;
+            if (!payload.churchId) payload.churchId = null;
+            return api.post('/auth/register', payload);
+        },
         onSuccess: (res) => {
             qc.invalidateQueries({ queryKey: ['admin-users'] });
             setShowCreate(false);
@@ -616,7 +616,7 @@ export default function AdminUsersPage() {
                                                             <GraduationCap className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                                             <select {...register('rankId')}
                                                                 className="w-full pl-10 pr-4 py-3 border-2 border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 appearance-none bg-white transition-all cursor-pointer dark:text-slate-200">
-                                                                <option value="">Select your previous rank...</option>
+                                                                <option value="">None / N/A (Candidate)</option>
                                                                 {ranks.map(r => (
                                                                     <option key={r.id} value={r.id}>{r.name}</option>
                                                                 ))}
