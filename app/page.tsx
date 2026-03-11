@@ -24,6 +24,11 @@ import mission1 from '../app/assets/mission1.png'
 import treasurer from '../app/assets/treasurer.png'
 import rec from '../app/assets/rec.png'
 import ranking from '../app/assets/ranking.png'
+import comm1 from '../app/assets/comma1.png'
+import comm2 from '../app/assets/comm2.png'
+import conference from '../app/assets/conference.png'
+import vice from '../app/assets/vice.png'
+
 // --- Components ---
 
 const Navbar = () => {
@@ -206,7 +211,7 @@ const Programs = () => (
 const Officers = () => {
   const officers = [
     { name: 'Amb. Ezekiel Ogunmola', role: 'Director', img:director.src},
-    { name: 'David Smith', role: 'Vice Director', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA3Dkrl6cuX4Y7lHDJg_B0VwzY4_EY_8RqlNkU_Dsgv9Erx82Uz1MEsi7icqNllEYh7N34HFxhcXGF9oytOT_u-PMzEhTI623t5HFuxZrlwX0fnHQZtrRpTMETlRJLkLw_hoZL4t117Je-UQtueDM9Gnfpkz836UKfHP-8QQkmaqt1R195GWyfhJKOBYZV5ObJbiDAz9QllzazmeR0zsbB_tR4_7Num_JgiDc5_fDKwLBaxK6Im-1aHLOMsj5wOESKA_ulQz_F3fwb3' },
+    { name: 'Amb. Akande Damilola', role: 'Vice Director', img:vice.src},
     { name: 'Emmanuel Okoro', role: 'General Secretary', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBakGOPh2RBtnA0Gskr0hrUdb0FSf7FlpDvXI6kDmJ6oV4QyaU6_4vZm61mP_jnPZvPEvG0gQVdwDfpXgLhu3iIm2en7gOPYuFyO4UZYu8ZYl-koCSqJZBm4mTkRiN33E_ziZviBj7wqkSslLZrAgILsJcfwlorysY1mw4gsXze04F2uIb6zYqByiC_jc7L4AZXSjLEkIi8ycOHkL-DGXzRsf91ezw63XfP9r09VfWP8lvowxrhy7fCSPbyKGINgUZr4B2YOqydCPxU' },
     { name: 'Amb. Adewale Idowu', role: 'Recording Secretary', img:rec.src},
     { name: 'Amb. Adegoke Damilare', role: 'Treasurer', img:treasurer.src},
@@ -214,12 +219,12 @@ const Officers = () => {
     { name: 'Amb. Samuel Adewale', role: 'Missions Coordinator 1', img:mission1.src},
     { name: 'Isaac Oluwaseun', role: 'Public Relations Officer', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBMLXUG1ZatCSbgty6Hu6PNefzUCBgdBHRgbeNyriK7yFtfXsLJcHd6oxpRclSL76ogb-mUKF56cFKbtc8JhL6bXeiJUoMOui7ld6XEa6AvcaQsJXA1ta1pzmeTueKyl1SqtK3_JUkQu_issjtgMDUnu4BKPC_YTYmIyKDiqHvGI4iKYT0-_A9_XPeoxaLeNa8R6CR_-SmYxhKRotS4WU9r3ddRcsKZ8hluLDqO2UGNCm4JlvKDg9Gaj4wqsz_iUWSog9r5FCt0PXkm' },
     { name: 'Amb. Aderemi Timothy', role: 'Ranking Coordinator', img:ranking.src },
-    { name: 'Stephen Abiodun', role: 'Commander 1', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAWsbMymgVl_AKb563opNqWCv5H3VKrUgiEhYHx0igTVCeeRBKwcw_G0ga-F7VYCn-J0dr_Wsux-xZWRgU1Hrh_Fdw3CJj-1CGwZPIy9CCEXGJYATnxN3WElXYFwotbxpI3-dZhSFthwIO6L7kJnSkqAsYol_9ZdY_OdlTzOUnT4zBJtlfOC245vDfLsfxMRgxRT2h3IJdmdUdkleX-hB7VPZw60PqHs1JTf5p6onZ92ZtNg6TGDNOddEmRfy_xNmaNuLRC4wI7RSGi' },
-    { name: 'Paul Akpan', role: 'Commander 2', img: 'https://picsum.photos/seed/paul/200/200' },
+    { name: 'Amb Taiwo Adewuyi', role: 'Commander 1', img:comm1.src },
+    { name: 'Amb Owoade Ayomide', role: 'Commander 2', img:comm2.src },
     { name: 'James Ibrahim', role: 'Custodian', img: 'https://picsum.photos/seed/james/200/200' },
     { name: 'Gabriel Uzor', role: 'Sport Director', img: 'https://picsum.photos/seed/gabriel/200/200' },
     { name: 'Matthew Balogun', role: '', img: 'https://picsum.photos/seed/matthew/200/200' },
-    { name: 'Luke Eze', role: 'Organizing Secretary', img: 'https://picsum.photos/seed/luke/200/200' },
+    { name: 'Amb Oyeyinka Tobiloba', role: 'Conference Auditor', img:conference.src },
     { name: 'Mark Okon', role: 'Ex-Officio', img: 'https://picsum.photos/seed/mark/200/200' },
   ];
 
@@ -284,8 +289,31 @@ const HymnAndPledge = () => (
       <div className="flex flex-col md:flex-row w-full gap-10">
         <div className="flex-1 flex flex-col items-center bg-white p-8 md:p-10 rounded-2xl shadow-sm border border-slate-100 text-center">
           <div className="flex items-center gap-3 mb-6">
-            <Music className="text-primary" size={32} />
-            <h3 className="text-2xl font-bold text-secondary">Royal Ambassadors Hymn</h3>
+            <Music className="text-black" size={32} />
+            <h3 className="text-2xl font-bold text-black">Royal Ambassadors Hymn</h3>
+          </div>
+          <div className="flex-1 w-full text-slate-600 leading-loose mb-10 text-base space-y-4">
+            <p>
+              I am a stranger here, within a foreign land, <br />
+              My home is far away, upon a golden strand, <br />
+              Ambassadors to be of realms beyond the sea, <br />
+              I’m here on business for my king.
+            </p>
+
+            <p className="font-bold">Chorus</p>
+
+            <p>
+              This is the message that I bring, <br />
+              A message angels fain would sing; <br />
+              “oh, be ye reconciled,” thus saith my lord and king, <br />
+              “oh, be ye reconciled to God.
+            </p>
+          </div>
+         
+        </div>
+         <div className="flex-1 flex flex-col items-center bg-white p-8 md:p-10 rounded-2xl shadow-sm border border-slate-100 text-center">
+          <div className="flex items-center gap-3 mb-6">
+            <h3 className="text-2xl font-bold text-black">Royal Ambassadors Pledge</h3>
           </div>
           <div className="flex-1 w-full text-slate-600 leading-loose mb-10 text-base space-y-4">
             <p>
@@ -326,7 +354,7 @@ const ContactForm = () => {
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
           <div>
-            <h2 className="text-3xl md:text-4xl font-bold text-secondary mb-6">Get in Touch</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-black mb-6">Get in Touch</h2>
             <p className="text-lg text-slate-600 mb-10 leading-relaxed">
               Have questions about our programs, membership, or upcoming events? Reach out to us and we'll get back to you as soon as possible.
             </p>
@@ -334,42 +362,32 @@ const ContactForm = () => {
             <div className="space-y-6">
               
               <div className="flex items-start gap-4">
-                <div className="size-12 rounded-lg bg-slate-50 flex items-center justify-center text-primary shrink-0">
-                  <Phone size={24} />
-                </div>
-                <div>
-                  <h4 className="font-bold text-secondary">Phone Number</h4>
-                  <p className="text-slate-600">+234 (0) 800 123 4567</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-4">
-                <div className="size-12 rounded-lg bg-slate-50 flex items-center justify-center text-primary shrink-0">
+                <div className="size-12 rounded-lg bg-black flex items-center justify-center  shrink-0">
                   <Mail size={24} />
                 </div>
                 <div>
-                  <h4 className="font-bold text-secondary">Email Address</h4>
-                  <p className="text-slate-600">info@ranational.org</p>
+                  <h4 className="font-bold text-black">Email Address</h4>
+                  <p className="text-black">raogba012@gmail.com</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-background-light p-8 md:p-10 rounded-3xl border border-slate-100 shadow-sm">
+          <div className="bg-white p-8 md:p-10 rounded-3xl border border-slate-100 shadow-sm">
             {status === 'sent' ? (
               <motion.div 
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="text-center py-10"
+                className="text-black py-10"
               >
                 <div className="size-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Send size={40} />
                 </div>
-                <h3 className="text-2xl font-bold text-secondary mb-2">Message Sent!</h3>
+                <h3 className="text-2xl font-bold text-black mb-2">Message Sent!</h3>
                 <p className="text-slate-600 mb-8">Thank you for reaching out. We'll be in touch shortly.</p>
                 <button 
                   onClick={() => setStatus('idle')}
-                  className="text-primary font-bold hover:underline"
+                  className="text-black font-bold hover:underline"
                 >
                   Send another message
                 </button>
@@ -378,16 +396,16 @@ const ContactForm = () => {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-secondary">Full Name</label>
+                    <label className="text-sm font-bold text-black">Full Name</label>
                     <input 
                       required
                       type="text" 
                       placeholder="John Doe"
-                      className="w-full h-12 px-4 rounded-xl border border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                      className="w-full h-12 px-4 rounded-xl border border-slate-200 focus:border-black focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-secondary">Email Address</label>
+                    <label className="text-sm font-bold text-black">Email Address</label>
                     <input 
                       required
                       type="email" 
@@ -397,15 +415,15 @@ const ContactForm = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-secondary">Subject</label>
-                  <select className="w-full h-12 px-4 rounded-xl border border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-white">
+                  <label className="text-sm font-bold text-black">Subject</label>
+                  <select className="w-full h-12 px-4 rounded-xl border border-slate-200 focus:border-primary focus:ring-2 focus:ring-black outline-none transition-all bg-white">
                     <option>General Inquiry</option>
                     <option>Programs & Events</option>
                     <option>Donations</option>
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-secondary">Message</label>
+                  <label className="text-sm font-bold text-black">Message</label>
                   <textarea 
                     required
                     rows={4}
@@ -416,7 +434,7 @@ const ContactForm = () => {
                 <div className="pt-2">
                   <button
                     type="submit"
-                    className={`w-full h-12 rounded-xl bg-primary text-white font-bold ${status === 'sending' ? 'opacity-60 pointer-events-none' : ''}`}
+                    className={`w-full h-12 rounded-xl bg-blue-900 text-white font-bold ${status === 'sending' ? 'opacity-60 pointer-events-none' : ''}`}
                   >
                     {status === 'sending' ? 'Sending...' : 'Send Message'}
                   </button>
