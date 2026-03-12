@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import {
     LayoutDashboard, Users, BookOpen, BarChart3,
     Church, LogOut, ChevronRight, Menu, X,
-    Bell, Settings, ChevronDown, PanelLeftClose, PanelLeftOpen, UserCircle, FileText
+    Bell, Settings, ChevronDown, PanelLeftClose, PanelLeftOpen, UserCircle, FileText, Home
 } from 'lucide-react';
 import { useState } from 'react';
 import Image from 'next/image';
@@ -211,6 +211,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                 {/* Bottom */}
                 <div className={`px-2 pb-5 pt-3 border-t border-white/10 mt-2 space-y-0.5`}>
+                    <Link href="/"
+                        title={collapsed ? 'Homepage' : undefined}
+                        className={`flex items-center gap-3 rounded-xl text-blue-200 hover:bg-white/10 hover:text-white transition-all duration-200
+                            ${collapsed ? 'justify-center px-2 py-3' : 'px-3 py-2.5'}`}>
+                        <Home style={{ width: '18px', height: '18px', flexShrink: 0 }} />
+                        {!collapsed && <span className="text-sm font-medium">Homepage</span>}
+                    </Link>
                     <Link href="/dashboard/admin/settings"
                         title={collapsed ? 'Settings' : undefined}
                         className={`flex items-center gap-3 rounded-xl text-blue-200 hover:bg-white/10 hover:text-white transition-all duration-200

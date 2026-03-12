@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import {
     LayoutDashboard, BookOpen, Award, User, Users,
     LogOut, ChevronRight, Menu, X, Bell, ChevronDown,
-    PanelLeftClose, PanelLeftOpen, UserCircle, Shield, FileText
+    PanelLeftClose, PanelLeftOpen, UserCircle, Shield, FileText, Home
 } from 'lucide-react';
 import { useState } from 'react';
 import Image from 'next/image';
@@ -204,8 +204,15 @@ export default function ChurchAdminLayout({ children }: { children: React.ReactN
                     {adminNav.map(item => <NavLink key={item.href} item={item} />)}
                 </nav>
 
-                {/* Logout */}
-                <div className="px-2 pb-5 pt-3 border-t border-white/10 mt-2">
+                {/* Bottom Options */}
+                <div className="px-2 pb-5 pt-3 border-t border-white/10 mt-2 space-y-0.5">
+                    <Link href="/"
+                        title={collapsed ? 'Homepage' : undefined}
+                        className={`w-full flex items-center gap-3 rounded-xl text-blue-200 hover:bg-white/10 hover:text-white transition-all duration-200
+                            ${collapsed ? 'justify-center px-2 py-3' : 'px-3 py-2.5'}`}>
+                        <Home style={{ width: '18px', height: '18px', flexShrink: 0 }} />
+                        {!collapsed && <span className="text-sm font-medium">Homepage</span>}
+                    </Link>
                     <button onClick={logout}
                         title={collapsed ? 'Sign Out' : undefined}
                         className={`w-full flex items-center gap-3 rounded-xl text-blue-200 hover:bg-red-500/20 hover:text-red-300 transition-all duration-200
