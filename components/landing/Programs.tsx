@@ -6,6 +6,7 @@ import camp from '@/app/assets/camp.png';
 import parade from '@/app/assets/parade.png';
 import ltc from '@/app/assets/ltc.png';
 import sport from '@/app/assets/sport.png';
+import quiz from '@/app/assets/quiz.png';
 
 interface ProgramCardProps {
     title: string;
@@ -73,7 +74,7 @@ export const Programs = () => {
                         index={0}
                         title="Missions Training"
                         description="Mission Outreach is a program where Royal Ambassadors actively share love and serve their communities. Through visits, support, and evangelism, members learn the importance of compassion, service, and spreading the message of Christ."
-                        image="https://lh3.googleusercontent.com/aida-public/AB6AXuAzuzv6XE3sA_kSfqIAhTIE9Uo2P1yh2G65Qv6alzqJ7z3sMNCXW3Eo-rbP9E49zOPNZs__tTmzozI9hGgn79eDMdcZLzJ1z6e4pRDDRkdBmpE-yOm7XQeTaFflwO8bbN4gLGAdyNUjmL5Hv8OoBCHa84q-WpHwuTQxkl-1S-7nF6YWkl7VVzrBbv3C0f7HmOPZpS1IWH1dlnhpks0dDOX6l50LwjyGAJE4WwNmDSNPQwCdVdgNTEtB7N23x5EmJwSY4FYyfrhqpsVF"
+                        image={quiz.src}
                     />
                     <ProgramCard
                         index={1}

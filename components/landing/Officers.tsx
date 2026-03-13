@@ -14,20 +14,35 @@ import ranking from '@/app/assets/ranking.png';
 import comm1 from '@/app/assets/comma1.png';
 import comm2 from '@/app/assets/comm2.png';
 import conference from '@/app/assets/conference.png';
+import sec from '@/app/assets/sec.png';
+import finan from '@/app/assets/finan.png';
+import exofficio from '@/app/assets/exofficio.png';
+import band from '@/app/assets/band.png';
+import pro from '@/app/assets/pro.png';
+import ex from '@/app/assets/ex.png';
+import asvc from '@/app/assets/asvc.png';
+import mission2 from '@/app/assets/mission2.png';
 
 const officers = [
     { name: 'Amb. Ezekiel Ogunmola', role: 'Director', img: director.src },
     { name: 'Amb. Akande Damilola', role: 'Vice Director', img: vice.src },
-    { name: 'Emmanuel Okoro', role: 'General Secretary', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBakGOPh2RBtnA0Gskr0hrUdb0FSf7FlpDvXI6kDmJ6oV4QyaU6_4vZm61mP_jnPZvPEvG0gQVdwDfpXgLhu3iIm2en7gOPYuFyO4UZYu8ZYl-koCSqJZBm4mTkRiN33E_ziZviBj7wqkSslLZrAgILsJcfwlorysY1mw4gsXze04F2uIb6zYqByiC_jc7L4AZXSjLEkIi8ycOHkL-DGXzRsf91ezw63XfP9r09VfWP8lvowxrhy7fCSPbyKGINgUZr4B2YOqydCPxU' },
+    { name: 'Amb. Ogunesan Johnson', role: 'General Secretary', img:sec.src},
     { name: 'Amb. Adewale Idowu', role: 'Recording Secretary', img: rec.src },
     { name: 'Amb. Adegoke Damilare', role: 'Treasurer', img: treasurer.src },
-    { name: 'Peter Chinedu', role: 'Financial Secretary', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDm2rDC0_T5gThmlpc3_kWgw-JZcS3zdcaZvxZnj6_FjfZ-1xtSUSUejQ94ycbzpTe8ASD0sgOEib8u1AbNtDO9DhGd4A0K8-p2UwsBtwlq5qukmxf7CRHgvKlw0BLSfhwgYvxPgLukhycrCfuyTP13xV5tvdn0YPP2LCddcSKJnho2APHhY7aAROYKcL6JjwLqWTPJ_UVndwr-1KCJmz4DVckXxUfYM-OuzmCr0SuhJW2wCv7OMTIwBRed26k4M_gRl3XrHgKj-zBb' },
+    { name: 'Amb. Ige Kehinde', role: 'Financial Secretary', img:finan.src },
     { name: 'Amb. Samuel Adewale', role: 'Missions Coordinator 1', img: mission1.src },
-    { name: 'Isaac Oluwaseun', role: 'Public Relations Officer', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBMLXUG1ZatCSbgty6Hu6PNefzUCBgdBHRgbeNyriK7yFtfXsLJcHd6oxpRclSL76ogb-mUKF56cFKbtc8JhL6bXeiJUoMOui7ld6XEa6AvcaQsJXA1ta1pzmeTueKyl1SqtK3_JUkQu_issjtgMDUnu4BKPC_YTYmIyKDiqHvGI4iKYT0-_A9_XPeoxaLeNa8R6CR_-SmYxhKRotS4WU9r3ddRcsKZ8hluLDqO2UGNCm4JlvKDg9Gaj4wqsz_iUWSog9r5FCt0PXkm' },
+    { name: 'Amb. Ajayi Christopher', role: 'Missions Coordinator 2',img:mission2.src  },
+    { name: 'Amb. Sunday Damilare', role: 'Public Relations Officer', img:pro.src},
     { name: 'Amb. Aderemi Timothy', role: 'Ranking Coordinator', img: ranking.src },
-    { name: 'Amb Taiwo Adewuyi', role: 'Commander 1', img: comm1.src },
-    { name: 'Amb Owoade Ayomide', role: 'Commander 2', img: comm2.src },
-    { name: 'Amb Oyeyinka Tobiloba', role: 'Conference Auditor', img: conference.src },
+    { name: 'Amb. Taiwo Adewuyi', role: 'Commander 1', img: comm1.src },
+    { name: 'Amb. Owoade Ayomide', role: 'Commander 2', img: comm2.src },
+    { name: 'Amb. Oladipupo Toyin', role: 'Sport/Band Major', img: band.src },
+    { name: 'Amb. Bankole Ajibade', role: 'Custodian'},
+    { name: 'Amb. Awolola Stephen', role: 'ASVC', img: asvc.src },
+    { name: 'Coun. Oyelowo Ireti', role: 'Pleni. cord/IPD', img: exofficio.src },
+    { name: 'Amb. Oyebode Isaiah', role: 'Ex officio', img: ex.src },
+    { name: 'Coun. Oyeyinka Tobiloba', role: 'Conference Auditor', img: conference.src },
+    { name: 'Coun. Moronkola Olaoluwa', role: 'Counselor', }
 ];
 
 export const Officers = () => {
@@ -61,7 +76,7 @@ export const Officers = () => {
                     className="text-center mb-16"
                 >
                     <span className="text-yellow-600 font-bold tracking-wider uppercase text-sm mb-3 block">Leadership</span>
-                    <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">National Officers</h2>
+                    <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">Association Officers</h2>
                 </motion.div>
 
                 <div className="relative w-full mb-16 group">
