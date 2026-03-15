@@ -9,23 +9,28 @@ export const Hero = () => {
     return (
         <section id="home" className="relative w-full min-h-screen flex items-center bg-blue-950 overflow-hidden pt-20">
             {/* Dynamic Background Elements */}
-            <div className="absolute inset-0 z-0 bg-blue-950">
+            <div className="absolute inset-0 z-0 bg-blue-950 pointer-events-none overflow-hidden">
+                {/* 
+                  Performance Optimization: 
+                  - Replaced `mix-blend-luminosity` (which causes severe scroll jank on mobile) with a simple grayscale filter.
+                  - Added `transform-gpu` and `will-change-transform` to push animations to the compositor thread.
+                */}
                 <div
-                    className="absolute inset-0 bg-center bg-no-repeat bg-cover opacity-50 mix-blend-luminosity transition-opacity duration-1000"
+                    className="absolute inset-0 bg-center bg-no-repeat bg-cover opacity-30 grayscale transition-opacity duration-1000 transform-gpu"
                     style={{ backgroundImage: `url("${background.src}")` }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-b from-blue-900/20 via-blue-950/70 to-blue-950" />
+                <div className="absolute inset-0 bg-gradient-to-b from-blue-900/30 via-blue-950/80 to-blue-950 transform-gpu" />
 
                 {/* Animated Glow Blobs */}
                 <motion.div
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
-                    transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-                    className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-blue-600/30 rounded-full blur-[120px]"
+                    animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.4, 0.3] }}
+                    transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+                    className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-blue-600/30 rounded-full blur-[100px] will-change-transform transform-gpu"
                 />
                 <motion.div
-                    animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.4, 0.2] }}
-                    transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-                    className="absolute top-[20%] right-[0%] w-[40%] h-[60%] bg-yellow-500/10 rounded-full blur-[120px]"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.3, 0.2] }}
+                    transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+                    className="absolute top-[20%] right-[0%] w-[40%] h-[60%] bg-yellow-500/10 rounded-full blur-[100px] will-change-transform transform-gpu"
                 />
             </div>
 
