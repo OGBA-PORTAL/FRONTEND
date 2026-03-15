@@ -22,6 +22,8 @@ import pro from '@/app/assets/pro.png';
 import ex from '@/app/assets/ex.png';
 import asvc from '@/app/assets/asvc.png';
 import mission2 from '@/app/assets/mission2.png';
+import coun from '@/app/assets/coun.png';
+import junior from '@/app/assets/junior.png';
 
 const officers = [
     { name: 'Amb. Ezekiel Ogunmola', role: 'Director', img: director.src },
@@ -39,10 +41,11 @@ const officers = [
     { name: 'Amb. Oladipupo Toyin', role: 'Sport/Band Major', img: band.src },
     { name: 'Amb. Bankole Ajibade', role: 'Custodian'},
     { name: 'Amb. Awolola Stephen', role: 'ASVC', img: asvc.src },
+     { name: 'Amb.Adepoju Daniel', role: 'Junior & Intermediate president', img:junior.src},
     { name: 'Coun. Oyelowo Ireti', role: 'Pleni. cord/IPD', img: exofficio.src },
     { name: 'Amb. Oyebode Isaiah', role: 'Ex officio', img: ex.src },
     { name: 'Coun. Oyeyinka Tobiloba', role: 'Conference Auditor', img: conference.src },
-    { name: 'Coun. Moronkola Olaoluwa', role: 'Counselor', }
+    { name: 'Coun. Moronkola Olaoluwa', role: 'Counselor', img:coun.src}
 ];
 
 export const Officers = () => {
