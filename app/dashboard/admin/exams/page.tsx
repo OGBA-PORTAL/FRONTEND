@@ -9,9 +9,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-    BookOpen, Plus, Search, Loader2, X, Clock,
-    CheckCircle, FileText, Send, Eye, Users, Award, Trash2, AlertTriangle, PauseCircle, PlayCircle, Undo2
+    BookOpen, Plus, Search, Loader2, X,
+    CheckCircle, FileText, Send, PauseCircle
 } from 'lucide-react';
+import { ExamCard } from '@/components/admin/ExamCard';
 import Link from 'next/link';
 import { useToast } from '@/context/ToastContext';
 
@@ -78,54 +79,7 @@ export default function AdminExamsPage() {
         },
     });
 
-    const publishMutation = useMutation({
-        mutationFn: (id: string) => api.patch(`/exams/${id}/status`, { status: 'PUBLISHED' }),
-        onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ['admin-exams'] });
-            toast.success('Exam Published', 'The exam is now live.');
-        },
-        onError: (err: any) => toast.error('Publish Failed', err?.response?.data?.message ?? 'Could not publish exam'),
-    });
-
-    const pauseMutation = useMutation({
-        mutationFn: (id: string) => api.patch(`/exams/${id}/status`, { status: 'PAUSED' }),
-        onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ['admin-exams'] });
-            toast.success('Exam Paused', 'Students can no longer start or submit this exam.');
-        },
-        onError: (err: any) => toast.error('Pause Failed', err?.response?.data?.message ?? 'Could not pause exam'),
-    });
-
-    const releaseMutation = useMutation({
-        mutationFn: (id: string) => api.patch(`/exams/${id}/release`),
-        onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ['admin-exams'] });
-            toast.success('Results Released', 'Exam results are now visible to all participants.');
-        },
-        onError: (err: any) => toast.error('Release Failed', err?.response?.data?.message ?? 'Could not release results'),
-    });
-
-    const retractMutation = useMutation({
-        mutationFn: (id: string) => api.patch(`/exams/${id}/retract`),
-        onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ['admin-exams'] });
-            toast.success('Results Retracted', 'Exam results have been hidden from students.');
-        },
-        onError: (err: any) => toast.error('Retract Failed', err?.response?.data?.message ?? 'Could not retract results'),
-    });
-
-    const deleteMutation = useMutation({
-        mutationFn: (id: string) => api.delete(`/exams/${id}`),
-        onSuccess: (res) => {
-            qc.invalidateQueries({ queryKey: ['admin-exams'] });
-            setConfirmDelete(null);
-            toast.success('Exam Deleted', res.data?.message ?? 'The exam has been permanently removed.');
-        },
-        onError: (err: any) => {
-            setConfirmDelete(null);
-            toast.error('Delete Failed', err?.response?.data?.message ?? 'Could not delete the exam.');
-        },
-    });
+    // Update mutations have been extracted to ExamCard component
 
     const filtered = exams.filter(e =>
         search === '' || e.title.toLowerCase().includes(search.toLowerCase())
@@ -177,148 +131,14 @@ export default function AdminExamsPage() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                        {filtered.map(exam => {
-                            const cfg = statusConfig[exam.status] ?? statusConfig.DRAFT;
-                            const StatusIcon = cfg.icon;
-                            // Need to handle badge colors for dark mode dynamically or use a helper
-                            // For simplicity, I'll rely on the existing bg/text classes but might need overrides if they are too light/dark
-                            // Actually, let's adjust the statusConfig usage to be more compatible or override here.
-                            // The `cfg.color` strings like 'bg-slate-100 text-slate-600' might need dark variants.
-                            // Since they are strings, I can't easily injection dark classes.
-                            // Let's replace the span with specific conditional logic or just let it be for now and see.
-                            // Actually, 'bg-slate-100' in dark mode is bright. I should map them.
-
-                            let statusClass = cfg.color;
-                            if (exam.status === 'DRAFT') statusClass = "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300";
-                            if (exam.status === 'PUBLISHED') statusClass = "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400";
-                            if (exam.status === 'PAUSED') statusClass = "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400";
-                            if (exam.status === 'COMPLETED') statusClass = "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400";
-
-                            return (
-                                <div key={exam.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden hover:shadow-md transition-all"
-                                    style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-                                    {/* Card Header */}
-                                    <div className="p-5 border-b border-slate-50 dark:border-slate-800">
-                                        <div className="flex items-start justify-between gap-2 mb-3">
-                                            <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm leading-snug flex-1">{exam.title}</h3>
-                                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold flex-shrink-0 ${statusClass}`}>
-                                                <StatusIcon className="w-3 h-3" />
-                                                {cfg.label}
-                                            </span>
-                                        </div>
-                                        {exam.ranks && (
-                                            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                                                <Award className="w-3.5 h-3.5 text-yellow-500" />
-                                                <span>{exam.ranks.name}</span>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Stats */}
-                                    <div className="grid grid-cols-3 divide-x divide-slate-100 dark:divide-slate-800 border-b border-slate-100 dark:border-slate-800">
-                                        {[
-                                            { icon: Clock, label: 'Duration', value: `${exam.duration}m` },
-                                            { icon: Users, label: 'Questions', value: exam.questionCount },
-                                            { icon: CheckCircle, label: 'Pass Mark', value: `${exam.passMark}%` },
-                                        ].map(({ icon: Icon, label, value }) => (
-                                            <div key={label} className="p-3 text-center">
-                                                <Icon className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 mx-auto mb-1" />
-                                                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{value}</p>
-                                                <p className="text-[10px] text-slate-400 dark:text-slate-500">{label}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {/* Actions */}
-                                    <div className="p-4 space-y-2">
-                                        <div className="flex gap-2">
-                                            <Link href={`/dashboard/admin/exams/${exam.id}`}
-                                                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                                                <Eye className="w-3.5 h-3.5" />
-                                                Manage
-                                            </Link>
-                                            {exam.status === 'DRAFT' && (
-                                                <button onClick={() => publishMutation.mutate(exam.id)}
-                                                    disabled={publishMutation.isPending}
-                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-white text-xs font-semibold transition-all hover:opacity-90"
-                                                    style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}>
-                                                    <Send className="w-3.5 h-3.5" />
-                                                    Publish
-                                                </button>
-                                            )}
-                                            {exam.status === 'PUBLISHED' && !exam.resultsReleased && (
-                                                <button onClick={() => pauseMutation.mutate(exam.id)}
-                                                    disabled={pauseMutation.isPending}
-                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-semibold hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors">
-                                                    <PauseCircle className="w-3.5 h-3.5" />
-                                                    Pause
-                                                </button>
-                                            )}
-                                            {exam.status === 'PAUSED' && !exam.resultsReleased && (
-                                                <button onClick={() => publishMutation.mutate(exam.id)}
-                                                    disabled={publishMutation.isPending}
-                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-white text-xs font-semibold transition-all hover:opacity-90"
-                                                    style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}>
-                                                    <PlayCircle className="w-3.5 h-3.5" />
-                                                    Resume
-                                                </button>
-                                            )}
-                                            {exam.status === 'PUBLISHED' && !exam.resultsReleased && (
-                                                <button onClick={() => releaseMutation.mutate(exam.id)}
-                                                    disabled={releaseMutation.isPending}
-                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-white text-xs font-semibold transition-all hover:opacity-90"
-                                                    style={{ background: 'linear-gradient(135deg, #059669, #10b981)' }}>
-                                                    <CheckCircle className="w-3.5 h-3.5" />
-                                                    Release Results
-                                                </button>
-                                            )}
-                                            {exam.resultsReleased && (
-                                                <button onClick={() => retractMutation.mutate(exam.id)}
-                                                    disabled={retractMutation.isPending}
-                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors"
-                                                    title="Undo Results Release">
-                                                    <Undo2 className="w-3.5 h-3.5" />
-                                                    Retract Results
-                                                </button>
-                                            )}
-                                            {/* Delete trigger — always visible */}
-                                            <button
-                                                onClick={() => setConfirmDelete(confirmDelete === exam.id ? null : exam.id)}
-                                                className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-xl bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
-                                                title="Delete exam">
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                            </button>
-                                        </div>
-
-                                        {/* Inline confirm row */}
-                                        {confirmDelete === exam.id && (
-                                            <div className="flex items-center gap-2 p-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 animate-in fade-in slide-in-from-top-1 duration-150">
-                                                <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
-                                                <p className="text-xs text-red-700 dark:text-red-300 font-medium flex-1">
-                                                    This will delete the exam, all its questions and all student attempts. This cannot be undone.
-                                                </p>
-                                                <div className="flex gap-1.5 flex-shrink-0">
-                                                    <button
-                                                        onClick={() => setConfirmDelete(null)}
-                                                        className="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-50 transition-colors">
-                                                        Cancel
-                                                    </button>
-                                                    <button
-                                                        onClick={() => deleteMutation.mutate(exam.id)}
-                                                        disabled={deleteMutation.isPending}
-                                                        className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold transition-colors disabled:opacity-60 flex items-center gap-1">
-                                                        {deleteMutation.isPending
-                                                            ? <Loader2 className="w-3 h-3 animate-spin" />
-                                                            : <Trash2 className="w-3 h-3" />}
-                                                        Delete
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
+                        {filtered.map(exam => (
+                            <ExamCard
+                                key={exam.id}
+                                exam={exam}
+                                ranks={ranks}
+                                statusConfig={statusConfig}
+                            />
+                        ))}
                     </div>
                 )}
             </div>
