@@ -22,7 +22,7 @@ const createExamSchema = z.object({
     rankId: z.string().min(1, 'Rank is required'),
     duration: z.number().min(5, 'Min 5 minutes').max(300, 'Max 300 minutes'),
     passMark: z.number().min(1).max(100),
-    questionCount: z.number().min(50, 'Minimum 50 questions required'),
+    questionCount: z.number().min(1, 'Must be at least 1'),
     examDate: z.string().optional(),
 });
 type CreateExamForm = z.infer<typeof createExamSchema>;
@@ -60,7 +60,7 @@ export default function AdminExamsPage() {
 
     const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<CreateExamForm>({
         resolver: zodResolver(createExamSchema),
-        defaultValues: { duration: 60, passMark: 50, questionCount: 50 },
+        defaultValues: { duration: 60, passMark: 50, questionCount: 30 },
     });
 
     const createMutation = useMutation({
@@ -207,8 +207,10 @@ export default function AdminExamsPage() {
                                         className="w-full px-3 py-2.5 border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:text-slate-200 transition-colors" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Questions</label>
-                                    <input {...register('questionCount', { valueAsNumber: true })} type="number" min={50}
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Questions to Attempt
+                                        <span className="text-xs font-normal text-slate-400 ml-1">(pool must have ≥50)</span>
+                                    </label>
+                                    <input {...register('questionCount', { valueAsNumber: true })} type="number" min={1}
                                         className="w-full px-3 py-2.5 border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:text-slate-200 transition-colors" />
                                     {errors.questionCount && <p className="text-xs text-red-500 mt-1">{errors.questionCount.message}</p>}
                                 </div>

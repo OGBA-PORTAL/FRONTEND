@@ -16,7 +16,7 @@ const updateExamSchema = z.object({
     title: z.string().min(3, 'Title must be at least 3 characters'),
     duration: z.number().min(5).max(300),
     passMark: z.number().min(1).max(100),
-    questionCount: z.number().min(50),
+    questionCount: z.number().min(1, 'Must be at least 1'),
     rankId: z.string().optional(),
 });
 type UpdateExamForm = z.infer<typeof updateExamSchema>;
@@ -75,11 +75,12 @@ export const ExamCard = ({ exam, ranks, statusConfig }: ExamCardProps) => {
         },
         onSuccess: (data, { action }) => {
             invalidate();
-            if (action === 'delete') toast.success('Deleted', 'Exam permantly removed.');
+            if (action === 'delete') toast.success('Deleted', 'Exam permanently removed.');
             if (action === 'release') toast.success('Released', 'Results published to students.');
             if (action === 'retract') toast.success('Retracted', 'Results hidden.');
-            if (action === 'PUBLISHED') toast.success('Published', 'Exam is live.');
+            if (action === 'PUBLISHED') toast.success('Published', 'Exam is now live.');
             if (action === 'PAUSED') toast.success('Paused', 'Exam is paused.');
+            if (action === 'DRAFT') toast.success('Unpublished', 'Exam has been reverted to Draft.');
         },
         onError: (err: any) => toast.error('Action Failed', err?.response?.data?.message || 'Something went wrong'),
     });
@@ -188,6 +189,16 @@ export const ExamCard = ({ exam, ranks, statusConfig }: ExamCardProps) => {
                             </button>
                         </div>
 
+                        {/* Unpublish — revert to DRAFT (only for PUBLISHED or PAUSED, no results released) */}
+                        {(exam.status === 'PUBLISHED' || exam.status === 'PAUSED') && !exam.resultsReleased && (
+                            <button
+                                onClick={() => actionMutation.mutate({ action: 'DRAFT' })}
+                                disabled={actionMutation.isPending}
+                                className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 text-[10px] font-semibold hover:border-slate-300 hover:text-slate-600 dark:hover:text-slate-400 transition-colors">
+                                <Undo2 className="w-3 h-3" /> Unpublish (revert to Draft)
+                            </button>
+                        )}
+
                         {confirmDelete && (
                             <div className="absolute bottom-1 left-1 right-1 bg-red-50 dark:bg-red-900/40 border border-red-200 dark:border-red-800 rounded-xl p-2 flex items-center justify-between z-10">
                                 <span className="text-[10px] text-red-600 font-semibold px-1">Verify delete?</span>
@@ -202,8 +213,8 @@ export const ExamCard = ({ exam, ranks, statusConfig }: ExamCardProps) => {
                 </div>
 
                 {/* --- BACK OF CARD (Editor) --- */}
-                <div className="absolute inset-0 backface-hidden bg-white dark:bg-slate-900 rounded-2xl border-2 border-blue-500/30 overflow-hidden flex flex-col"
-                    style={{ transform: "rotateY(180deg)", boxShadow: '0 8px 30px rgba(59, 130, 246, 0.15)' }}>
+                <div className="absolute inset-0 bg-white dark:bg-slate-900 rounded-2xl border-2 border-blue-500/30 overflow-hidden flex flex-col"
+                    style={{ transform: "rotateY(180deg)", backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', boxShadow: '0 8px 30px rgba(59, 130, 246, 0.15)' }}>
 
                     <div className="p-3 bg-blue-50/50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-900/30 flex justify-between items-center shrink-0">
                         <span className="text-xs font-bold text-blue-800 dark:text-blue-300 flex items-center gap-1.5 shadow-sm">

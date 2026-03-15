@@ -213,7 +213,7 @@ export default function StudentExamsPage() {
                                                 }
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm leading-snug">{exam.title}</h3>
+                                                <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm leading-snug truncate">{exam.title}</h3>
                                                 <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 mt-1">
                                                     {exam.ranks && (
                                                         <div className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
