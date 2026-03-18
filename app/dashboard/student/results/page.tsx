@@ -16,12 +16,15 @@ export default function StudentResultsPage() {
     });
 
     const completed = attempts.filter(a => a.submittedAt || a.completedAt);
-    const passed = completed.filter(a => {
+    const released = completed.filter(a => a.exams?.resultsReleased);
+    const pendingReview = completed.filter(a => !a.exams?.resultsReleased);
+    
+    const passed = released.filter(a => {
         return a.score !== null && a.exams?.passMark !== undefined
             ? a.score >= a.exams.passMark
             : !!a.passed;
     }).length;
-    const passRate = completed.length > 0 ? Math.round((passed / completed.length) * 100) : 0;
+    const passRate = released.length > 0 ? Math.round((passed / released.length) * 100) : 0;
 
     return (
         <ProtectedRoute allowedRoles={['RA']}>
@@ -35,7 +38,7 @@ export default function StudentResultsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {[
                         { label: 'Exams Taken', value: completed.length, icon: BarChart3, color: 'from-blue-600 to-blue-800' },
-                        { label: 'Exams Pending Review', value: completed.length, icon: Clock, color: 'from-slate-600 to-slate-800' },
+                        { label: 'Exams Pending Review', value: pendingReview.length, icon: Clock, color: 'from-slate-600 to-slate-800' },
                     ].map(({ label, value, icon: Icon, color }) => (
                         <div key={label} className={`rounded-2xl p-4 text-white bg-gradient-to-br ${color} relative overflow-hidden`}
                             style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.12)' }}>
@@ -93,9 +96,34 @@ export default function StudentResultsPage() {
                                         </div>
                                     </div>
                                     <div className="text-right flex-shrink-0">
-                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
-                                            Submitted for Grading
-                                        </span>
+                                        {attempt.exams?.resultsReleased ? (
+                                            <div className="flex flex-col items-end gap-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xl font-bold text-slate-800 dark:text-slate-200">
+                                                        {attempt.score}%
+                                                    </span>
+                                                    {attempt.score !== null && attempt.exams?.passMark !== undefined && attempt.score >= attempt.exams.passMark ? (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                                            <Trophy className="w-3 h-3" />
+                                                            PASSED
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                                                            <XCircle className="w-3 h-3" />
+                                                            FAILED
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500">
+                                                    Pass Mark: {attempt.exams?.passMark}%
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                                                <Clock className="w-3 h-3" />
+                                                Awaiting Result
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             ))}

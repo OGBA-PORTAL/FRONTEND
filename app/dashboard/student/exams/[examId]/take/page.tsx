@@ -10,28 +10,34 @@ import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
 
 // Timer Component
-const ExamTimer = ({ endTime, onExpire }: { endTime: string | null; onExpire: () => void }) => {
+const ExamTimer = ({ initialSeconds, onExpire }: { initialSeconds: number | null; onExpire: () => void }) => {
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
+    // Initialize only once when initialSeconds is provided
     useEffect(() => {
-        if (!endTime) return;
+        if (initialSeconds !== null) {
+            setTimeLeft(initialSeconds);
+        }
+    }, [initialSeconds]);
+
+    useEffect(() => {
+        if (timeLeft === null) return;
 
         const interval = setInterval(() => {
-            const end = new Date(endTime).getTime();
-            const now = new Date().getTime();
-            const diff = Math.floor((end - now) / 1000);
-
-            if (diff <= 0) {
-                setTimeLeft(0);
-                clearInterval(interval);
-                onExpire();
-            } else {
-                setTimeLeft(diff);
-            }
+            setTimeLeft(prev => {
+                if (prev === null) return null;
+                const next = prev - 1;
+                if (next <= 0) {
+                    clearInterval(interval);
+                    onExpire();
+                    return 0;
+                }
+                return next;
+            });
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [endTime, onExpire]);
+    }, [timeLeft !== null, onExpire]); // Re-bind only if active
 
     if (timeLeft === null) return <span>--:--</span>;
 
@@ -64,7 +70,7 @@ export default function TakeExamPage({ params }: { params: Promise<{ examId: str
     const [currentQIndex, setCurrentQIndex] = useState(0);
     const [error, setError] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
-    const [endTime, setEndTime] = useState<string | null>(null);
+    const [initialSeconds, setInitialSeconds] = useState<number | null>(null);
     const [isPaused, setIsPaused] = useState(false);
 
     // Anti-Cheat Refs
@@ -85,14 +91,20 @@ export default function TakeExamPage({ params }: { params: Promise<{ examId: str
                 setQuestions(data.questions);
 
                 // Load existing answers if resumed
-                if (data.answers) {
+                if (data.answers && Object.keys(data.answers).length > 0) {
                     setAnswers(data.answers);
+                    
+                    // Predict and jump to the first unanswered question
+                    const firstUnansweredIndex = data.questions.findIndex((q: StudentQuestion) => data.answers![q.id] === undefined);
+                    if (firstUnansweredIndex !== -1) {
+                        setCurrentQIndex(firstUnansweredIndex);
+                    }
                 }
 
-                // Calculate end time
-                const start = new Date(data.startedAt || new Date().toISOString()).getTime();
-                const durationMs = data.duration * 60 * 1000;
-                setEndTime(new Date(start + durationMs).toISOString());
+                // Set initial seconds for the timer from the server's calculation
+                // Fallback to 60 minutes if something went wrong
+                const safeTimeLeft = data.timeLeftSeconds !== undefined ? data.timeLeftSeconds : (data.duration || 60) * 60;
+                setInitialSeconds(safeTimeLeft);
 
                 setIsLoading(false);
             } catch (err: any) {
@@ -281,7 +293,7 @@ export default function TakeExamPage({ params }: { params: Promise<{ examId: str
                                 </span>
                             )}
                             <div className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg transition-colors">
-                                <ExamTimer endTime={endTime} onExpire={handleTimeExpire} />
+                                <ExamTimer initialSeconds={initialSeconds} onExpire={handleTimeExpire} />
                             </div>
                             <button
                                 onClick={() => submitMutation.mutate()}
@@ -359,7 +371,7 @@ export default function TakeExamPage({ params }: { params: Promise<{ examId: str
                             <button
                                 onClick={() => submitMutation.mutate()}
                                 disabled={isSubmitting}
-                                className="sm:hidden flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
+                                className="flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
                                 style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}>
                                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
                                 Submit

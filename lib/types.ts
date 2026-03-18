@@ -103,6 +103,7 @@ export interface ExamAttemptResponse {
     attemptId: string;
     examTitle: string;
     duration: number; // minutes
+    timeLeftSeconds?: number; // Server-calculated remaining time
     questions: StudentQuestion[];
     resumed?: boolean;
     startedAt?: string;

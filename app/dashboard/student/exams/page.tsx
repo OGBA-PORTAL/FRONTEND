@@ -4,7 +4,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { Exam, ExamAttempt } from '@/lib/types';
-import { BookOpen, Play, Clock, CheckCircle, Award, Loader2, Users, Lock, AlertCircle } from 'lucide-react';
+import { BookOpen, Play, Clock, CheckCircle, Award, Loader2, Users, Lock, AlertCircle, Trophy } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/context/ToastContext';
@@ -179,7 +179,10 @@ export default function StudentExamsPage() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {exams.map(exam => {
+                        {exams.filter(exam => {
+                            const lvl = exam.ranks?.level ?? 1;
+                            return lvl === userRankLevel || lvl === userRankLevel + 1;
+                        }).map(exam => {
                             const attempt = getAttempt(exam.id);
                             const completed = isCompleted(attempt);
                             const started = isStarted(attempt);
@@ -258,12 +261,20 @@ export default function StudentExamsPage() {
                                     {/* Action button */}
                                     <div className="p-4">
                                         {completed ? (
-                                            <div className="flex items-center justify-between">
-                                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
-                                                    <CheckCircle className="w-3.5 h-3.5" />
-                                                    Submitted for Grading
-                                                </span>
-                                            </div>
+                                            exam.resultsReleased ? (
+                                                <Link href="/dashboard/student/results" className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 shadow-sm"
+                                                    style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
+                                                    <Trophy className="w-4 h-4" />
+                                                    View Result
+                                                </Link>
+                                            ) : (
+                                                <div className="flex items-center justify-center w-full">
+                                                    <span className="w-full justify-center inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800">
+                                                        <CheckCircle className="w-4 h-4" />
+                                                        Submitted for Grading
+                                                    </span>
+                                                </div>
+                                            )
                                         ) : started ? (
                                             <Link href={`/dashboard/student/exams/${exam.id}/take`}
                                                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90"

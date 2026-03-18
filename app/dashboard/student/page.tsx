@@ -20,12 +20,19 @@ export default function StudentDashboardPage() {
     });
 
     const attempts = attemptsData ?? [];
-    const submitted = attempts.filter(a => a.status !== 'STARTED').length;
-    const passedAttempts = attempts.filter(a => a.passed === true);
+    const submitted = attempts.filter(a => a.status !== 'STARTED');
+    const released = submitted.filter(a => a.exams?.resultsReleased);
+    
+    // Calculate pass rate purely from released scores
+    const passedAttempts = released.filter(a => 
+        a.score !== null && a.exams?.passMark !== undefined 
+            ? a.score >= a.exams.passMark 
+            : !!a.passed
+    );
     const passed = passedAttempts.length;
 
     // Circular Progress Math
-    const passRate = submitted > 0 ? Math.round((passed / submitted) * 100) : 0;
+    const passRate = released.length > 0 ? Math.round((passed / released.length) * 100) : 0;
     const strokeDashoffset = 251.2 - (251.2 * passRate) / 100;
 
     const statusIcon = (status: string) => {
@@ -99,7 +106,7 @@ export default function StudentDashboardPage() {
                             <div>
                                 <p className="text-slate-500 dark:text-slate-400 text-sm font-semibold tracking-wide uppercase">Activity Check</p>
                                 <div className="mt-4 flex items-baseline gap-2">
-                                    <span className="text-5xl font-black text-slate-800 dark:text-white tracking-tighter">{submitted}</span>
+                                    <span className="text-5xl font-black text-slate-800 dark:text-white tracking-tighter">{submitted.length}</span>
                                     <span className="text-slate-500 dark:text-slate-400 font-medium">exams taken</span>
                                 </div>
                             </div>
@@ -191,8 +198,8 @@ export default function StudentDashboardPage() {
                                         </p>
                                         <div className="flex items-center gap-3 mt-1 text-xs text-slate-500 dark:text-slate-400 font-medium">
                                             <span className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-                                                {statusIcon(attempt.status)}
-                                                {statusLabel(attempt.status)}
+                                                {attempt.exams?.resultsReleased ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : statusIcon(attempt.status)}
+                                                {attempt.exams?.resultsReleased ? 'Graded' : statusLabel(attempt.status)}
                                             </span>
                                             <span>
                                                 {new Date(attempt.startedAt).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -207,12 +214,12 @@ export default function StudentDashboardPage() {
                                         </Link>
                                     )}
 
-                                    {attempt.score !== null && (
+                                    {attempt.score !== null && attempt.exams?.resultsReleased && (
                                         <div className="sm:ml-auto flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
                                             <div className="flex flex-col items-end">
                                                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Score</span>
                                                 <div className={`px-3 py-1 rounded-lg text-sm font-black border ${attempt.passed ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-400' : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'}`}>
-                                                    {attempt.score} <span className="opacity-50 font-medium">/ {attempt.totalPoints}</span>
+                                                    {attempt.score} <span className="opacity-50 font-medium">%</span>
                                                 </div>
                                             </div>
                                         </div>
