@@ -43,7 +43,7 @@ export const Hero = () => {
                         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                     >
                         <span className="inline-block py-1.5 px-4 rounded-full bg-white/10 border border-white/20 text-yellow-400 text-sm font-bold tracking-wider uppercase mb-6 shadow-xl backdrop-blur-md">
-                            Royal Ambassadors Nigeria
+                            Ogbomoso Goshen Baptist Association
                         </span>
                         <h1 className="text-5xl md:text-7xl lg:text-8xl font-black leading-[1.1] tracking-tight text-white mb-6">
                             Raising Leaders, <br className="hidden md:block" />
@@ -58,9 +58,9 @@ export const Hero = () => {
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                        className="text-lg md:text-2xl font-light leading-relaxed text-blue-100 max-w-2xl"
+                        className="text-md md:text-2xl lg:text-lg font-light leading-relaxed text-blue-100 max-w-2xl"
                     >
-                        Empowering young men through discipleship, missions, and leadership training to impact the world for Christ.
+                       Promoting personal commitment demonstrated in stewardship of life, churchmanship and denominational interest, and understanding as well as an appreciation of Baptist beliefs and practices.
                     </motion.p>
 
                     <motion.div
