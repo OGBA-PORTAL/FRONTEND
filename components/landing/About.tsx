@@ -41,9 +41,9 @@ export const About = () => {
                                 <BookOpen size={32} />
                             </div>
                             <h3 className="text-xl font-bold text-slate-800 mb-4 font-serif italic text-center leading-relaxed">
-                                “Train up a child in the way he should go: and when he is old, he will not depart from it.”
+                               "Touching the lives of boys… impacting the eternity of men!"
                             </h3>
-                            <p className="text-slate-500 font-semibold tracking-wide">— Proverbs 22:6</p>
+                            <p className="text-slate-500 font-semibold tracking-wide">— vision —</p>
                         </div>
 
                         <div className="md:col-span-8 flex flex-col gap-6">
