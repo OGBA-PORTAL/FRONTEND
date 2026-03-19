@@ -169,13 +169,20 @@ export default function ChurchAdminExamsPage() {
                                     {isFuture && exam.examDate && <CountdownPanel examDate={exam.examDate} />}
                                     <div className="p-4">
                                         {completed ? (
-                                            <div className="flex items-center justify-between">
-                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold ${attempt?.passed ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'}`}>
-                                                    <CheckCircle className="w-3.5 h-3.5" />
-                                                    {attempt?.passed ? `Passed — ${attempt.score}%` : `Failed — ${attempt?.score ?? 0}%`}
-                                                </span>
-                                                <Link href="/dashboard/church-admin/results" className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline">View Results →</Link>
-                                            </div>
+                                            exam.resultsReleased ? (
+                                                <Link href="/dashboard/church-admin/results" className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 shadow-sm"
+                                                    style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
+                                                    <Trophy className="w-4 h-4" />
+                                                    View Result
+                                                </Link>
+                                            ) : (
+                                                <div className="flex items-center justify-center w-full">
+                                                    <span className="w-full justify-center inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800">
+                                                        <CheckCircle className="w-4 h-4" />
+                                                        Submitted for Grading
+                                                    </span>
+                                                </div>
+                                            )
                                         ) : started ? (
                                             <Link href={`/dashboard/student/exams/${exam.id}/take`}
                                                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90"
