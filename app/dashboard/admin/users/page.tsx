@@ -65,6 +65,7 @@ export default function AdminUsersPage() {
         targetIds: string[];
         isGlobal: boolean;
         churchName?: string;
+        churchId?: string;
     } | null>(null);
 
     // Queries
