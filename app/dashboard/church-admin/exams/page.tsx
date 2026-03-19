@@ -6,7 +6,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { Exam, ExamAttempt } from '@/lib/types';
-import { BookOpen, Play, Clock, CheckCircle, Award, Loader2, CalendarDays, Lock, Users } from 'lucide-react';
+import { BookOpen, Play, Clock, CheckCircle, Award, Loader2, CalendarDays, Lock, Users, Trophy } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/context/ToastContext';
