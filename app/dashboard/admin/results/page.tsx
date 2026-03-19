@@ -96,6 +96,40 @@ export default function AdminResultsPage() {
     }).length;
     const passRate = attempts.length > 0 ? Math.round((totalPassed / attempts.length) * 100) : 0;
 
+    const churchStats = attempts.reduce((acc, attempt) => {
+        const churchId = attempt.users?.churchId;
+        const churchName = attempt.users?.churches?.name;
+        if (!churchId || !churchName) return acc;
+        
+        if (!acc[churchId]) {
+            acc[churchId] = { id: churchId, name: churchName, passed: 0, failed: 0, total: 0 };
+        }
+        
+        const isPassed = attempt.score !== null && attempt.exams?.passMark !== undefined
+            ? attempt.score >= attempt.exams.passMark
+            : !!attempt.passed;
+            
+        acc[churchId].total += 1;
+        if (isPassed) {
+            acc[churchId].passed += 1;
+        } else if (attempt.submittedAt) {
+            acc[churchId].failed += 1;
+        }
+        
+        return acc;
+    }, {} as Record<string, { id: string, name: string, passed: number, failed: number, total: number }>);
+
+    const rankedChurches = Object.values(churchStats)
+        .filter(c => c.total > 0)
+        .map(c => ({
+            ...c,
+            passRate: Math.round((c.passed / c.total) * 100)
+        }))
+        .sort((a, b) => b.passRate - a.passRate || b.total - a.total);
+
+    const topChurches = rankedChurches.slice(0, 3);
+    const bottomChurches = [...rankedChurches].reverse().filter(c => c.passRate < 50 || rankedChurches.length <= 3).slice(0, 3);
+
     return (
         <ProtectedRoute allowedRoles={['SYSTEM_ADMIN', 'ASSOCIATION_OFFICER']}>
             <div className="space-y-5 max-w-7xl mx-auto">
@@ -123,24 +157,79 @@ export default function AdminResultsPage() {
                     ))}
                 </div>
 
+                {/* Church Performance Hierarchy */}
+                {rankedChurches.length > 0 && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-100 dark:border-slate-800" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+                            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
+                                <Trophy className="w-4 h-4 text-emerald-500" /> Top Performing Churches
+                            </h3>
+                            <div className="space-y-3">
+                                {topChurches.map((church, idx) => (
+                                    <div key={church.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-700 dark:text-emerald-400 text-xs font-bold">
+                                                {idx + 1}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{church.name}</p>
+                                                <p className="text-xs text-slate-500">{church.passed} passed / {church.total} total</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{church.passRate}%</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-100 dark:border-slate-800" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+                            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
+                                <BarChart3 className="w-4 h-4 text-red-500" /> Needs Improvement
+                            </h3>
+                            <div className="space-y-3">
+                                {bottomChurches.map((church, idx) => (
+                                    <div key={church.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-700 dark:text-red-400 text-xs font-bold">
+                                                {rankedChurches.length - idx}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{church.name}</p>
+                                                <p className="text-xs text-slate-500">{church.failed} failed / {church.total} total</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-sm font-bold text-red-600 dark:text-red-400">{church.passRate}%</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Filters */}
-                <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-3 transition-colors"
-                    style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-                    <div className="relative flex-1">
+                <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+                    <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-full md:w-auto overflow-x-auto hide-scrollbar">
+                        {['', 'PASSED', 'FAILED', 'PENDING'].map(status => (
+                            <button
+                                key={status}
+                                onClick={() => setFilter(status)}
+                                className={`px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors ${filter === status 
+                                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' 
+                                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                            >
+                                {status === '' ? 'All Results' : status === 'PENDING' ? 'In Progress' : status.charAt(0) + status.slice(1).toLowerCase()}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="relative w-full md:w-64">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input value={search} onChange={e => setSearch(e.target.value)}
-                            placeholder="Search by member name or exam..."
-                            className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 dark:text-slate-200 dark:placeholder-slate-500 transition-all" />
-                    </div>
-                    <div className="relative">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <select value={filter} onChange={e => setFilter(e.target.value)}
-                            className="pl-9 pr-8 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 appearance-none cursor-pointer dark:text-slate-200 transition-all">
-                            <option value="">All Results</option>
-                            <option value="PASSED">Passed</option>
-                            <option value="FAILED">Failed</option>
-                            <option value="PENDING">In Progress</option>
-                        </select>
+                            placeholder="Search name or exam..."
+                            className="w-full pl-9 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 dark:text-slate-200 dark:placeholder-slate-500 transition-all shadow-sm" />
                     </div>
                 </div>
 
@@ -308,30 +397,48 @@ export default function AdminResultsPage() {
                                 ) : detailedResult ? (
                                     <>
                                         {/* Review Header Stats */}
-                                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-5 border border-slate-100 dark:border-slate-800">
-                                            <div className="flex flex-col sm:flex-row justify-between gap-4">
-                                                <div>
-                                                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                                                        {detailedResult.attempt.users?.firstName} {detailedResult.attempt.users?.lastName}
-                                                    </p>
-                                                    <p className="text-xs text-slate-500">{detailedResult.attempt.exams?.title}</p>
-                                                </div>
-                                                <div className="flex gap-4">
-                                                    <div className="text-right">
-                                                        <p className="text-xs text-slate-500">Score</p>
-                                                        <p className={`text-lg font-bold ${detailedResult.attempt.passed ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                            {detailedResult.attempt.score}%
-                                                        </p>
+                                        {(() => {
+                                            const isPassed = detailedResult.attempt.score !== null && detailedResult.attempt.exams?.passMark !== undefined
+                                                ? detailedResult.attempt.score >= detailedResult.attempt.exams.passMark
+                                                : !!detailedResult.attempt.passed;
+                                            
+                                            return (
+                                                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-5 border border-slate-100 dark:border-slate-800">
+                                                    <div className="flex flex-col sm:flex-row justify-between gap-4">
+                                                        <div>
+                                                            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                                                <span>{detailedResult.attempt.users?.firstName} {detailedResult.attempt.users?.lastName}</span>
+                                                                <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/30 text-[10px] font-bold tracking-wider text-blue-600 dark:text-blue-400 uppercase">
+                                                                    {detailedResult.attempt.users?.ranks?.name || 'CANDIDATE (N/A)'}
+                                                                </span>
+                                                            </p>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <p className="text-xs text-slate-500 font-medium">{detailedResult.attempt.exams?.title}</p>
+                                                                {detailedResult.attempt.exams?.ranks?.name && (
+                                                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 uppercase">
+                                                                        FOR {detailedResult.attempt.exams.ranks.name}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex gap-4">
+                                                            <div className="text-right">
+                                                                <p className="text-xs text-slate-500">Score</p>
+                                                                <p className={`text-lg font-bold ${isPassed ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                                    {detailedResult.attempt.score}%
+                                                                </p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-xs text-slate-500">Result</p>
+                                                                <p className={`text-lg font-bold ${isPassed ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                                    {isPassed ? 'PASSED' : 'FAILED'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div className="text-right">
-                                                        <p className="text-xs text-slate-500">Result</p>
-                                                        <p className={`text-lg font-bold ${detailedResult.attempt.passed ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                            {detailedResult.attempt.passed ? 'PASSED' : 'FAILED'}
-                                                        </p>
-                                                    </div>
                                                 </div>
-                                            </div>
-                                        </div>
+                                            );
+                                        })()}
 
                                         {/* Questions Breakdown */}
                                         <div className="space-y-4">

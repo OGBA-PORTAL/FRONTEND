@@ -128,14 +128,12 @@ export default function StudentExamsPage() {
         mutationFn: (examId: string) => api.post(`/exams/${examId}/attempt`),
         onSuccess: (_, examId) => {
             qc.invalidateQueries({ queryKey: ['my-attempts'] });
-            setConfirmRepeatExam(null);
             toast.info('Exam Started', 'Good luck! Your time starts now.');
             router.push(`/dashboard/student/exams/${examId}/take`);
         },
         onError: (err: any) => {
             const msg = err?.response?.data?.message ?? 'Could not start the exam. You may not be eligible yet.';
             toast.error('Cannot Start Exam', msg);
-            setConfirmRepeatExam(null);
         },
     });
 
@@ -145,17 +143,8 @@ export default function StudentExamsPage() {
 
     const userRankLevel = user?.ranks?.level ?? 0;
 
-    const [confirmRepeatExam, setConfirmRepeatExam] = useState<Exam | null>(null);
-
     const handleStartClick = (exam: Exam) => {
-        const examRankLevel = exam.ranks?.level ?? 1;
-        // If the exam is for their current rank (or lower), warn them.
-        if (examRankLevel <= userRankLevel) {
-            setConfirmRepeatExam(exam);
-        } else {
-            // It's a promotion exam, proceed immediately
-            startMutation.mutate(exam.id);
-        }
+        startMutation.mutate(exam.id);
     };
 
     return (
@@ -181,7 +170,7 @@ export default function StudentExamsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {exams.filter(exam => {
                             const lvl = exam.ranks?.level ?? 1;
-                            return lvl === userRankLevel || lvl === userRankLevel + 1;
+                            return lvl === userRankLevel + 1; // Only show promotion exams
                         }).map(exam => {
                             const attempt = getAttempt(exam.id);
                             const completed = isCompleted(attempt);
@@ -302,7 +291,7 @@ export default function StudentExamsPage() {
                                                 disabled={startMutation.isPending}
                                                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 disabled:opacity-60"
                                                 style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}>
-                                                {startMutation.isPending && confirmRepeatExam?.id !== exam.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                                                {startMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                                                 Start Exam
                                             </button>
                                         )}
@@ -313,41 +302,6 @@ export default function StudentExamsPage() {
                     </div>
                 )}
 
-                {/* Repeat Exam Confirmation Warning */}
-                {confirmRepeatExam && (
-                    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-                        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-                            <div className="p-6">
-                                <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center shadow-lg shadow-amber-500/20 mb-4">
-                                    <AlertCircle className="w-6 h-6 text-amber-500" />
-                                </div>
-                                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">Repeat Rank Exam?</h2>
-                                <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
-                                    You are trying to attempt the <strong className="text-slate-700 dark:text-slate-300">"{confirmRepeatExam.title}"</strong>, which is designed for a rank you already hold (or lower).
-                                </p>
-                                <div className="mt-4 p-4 rounded-xl border bg-amber-50/50 border-amber-100 dark:bg-amber-900/10 dark:border-amber-900/30">
-                                    <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">
-                                        Was this a mistake? If you are looking for promotion, you should attempt the exam for your <strong>NEXT</strong> rank sequence instead.
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="p-6 pt-0 flex gap-3">
-                                <button
-                                    onClick={() => !startMutation.isPending && setConfirmRepeatExam(null)}
-                                    disabled={startMutation.isPending}
-                                    className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={() => startMutation.mutate(confirmRepeatExam.id)}
-                                    disabled={startMutation.isPending}
-                                    className="flex-1 px-4 py-3 rounded-xl text-white font-bold transition-all hover:opacity-90 disabled:opacity-60 shadow-lg shadow-amber-500/25 flex items-center justify-center bg-amber-500 hover:bg-amber-600">
-                                    {startMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Yes, Proceed'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
         </ProtectedRoute>
     );

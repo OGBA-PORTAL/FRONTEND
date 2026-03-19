@@ -76,6 +76,9 @@ export interface ExamAttempt {
         firstName: string;
         lastName: string;
         raNumber: string;
+        churchId?: string;
+        churches?: { name: string };
+        ranks?: { name: string; level: number };
     };
 }
 

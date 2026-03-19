@@ -149,18 +149,17 @@ export default function AdminUsersPage() {
     };
 
     const bulkUpdateMutation = useMutation({
-        mutationFn: ({ userIds, status }: { userIds: string[], status: 'ACTIVE' | 'SUSPENDED' }) =>
-            api.patch('/users/bulk-status', { userIds, status }),
+        mutationFn: ({ status, churchId }: { status: 'ACTIVE' | 'SUSPENDED', churchId?: string }) =>
+            api.patch('/users/bulk-status', { status, churchId }),
         onSuccess: (res, vars) => {
             qc.invalidateQueries({ queryKey: ['admin-users'] });
             setShowGlobalBulk(false);
             setBulkConfirmOptions(null);
-            const updatedCount = res.data?.data?.updatedCount;
-            const count = updatedCount !== undefined ? updatedCount : vars.userIds.length;
+            const count = res.data?.data?.updatedCount ?? '?';
             if (vars.status === 'ACTIVE') {
                 toast.success('Bulk Update Complete', `Successfully activated ${count} members.`);
             } else {
-                toast.error('Bulk Update Complete', `Successfully suspended ${count} members.`);
+                toast.success('Bulk Update Complete', `Successfully suspended ${count} members.`);
             }
         },
         onError: (err: any) => {
@@ -169,10 +168,9 @@ export default function AdminUsersPage() {
     });
 
     const handleGlobalBulkAction = (status: 'ACTIVE' | 'SUSPENDED') => {
-        // Find all RAs (Skip those already in the target status or pending if suspending)
+        // Count qualifying users for UI display only
         const targetIds = users.filter(u => {
             if (u.role !== 'RA') return false;
-
             if (status === 'ACTIVE' && u.status === 'ACTIVE') return false;
             if (status === 'SUSPENDED' && u.status === 'SUSPENDED') return false;
             return true;
@@ -183,8 +181,9 @@ export default function AdminUsersPage() {
         setBulkConfirmOptions({
             isOpen: true,
             type: status,
-            targetIds,
+            targetIds, // used for count display only
             isGlobal: true,
+            churchId: undefined, // global = no churchId
         });
         setShowGlobalBulk(false);
     };
@@ -192,7 +191,7 @@ export default function AdminUsersPage() {
     const handleChurchBulkAction = (churchId: string, status: 'ACTIVE' | 'SUSPENDED', e: React.MouseEvent) => {
         e.stopPropagation();
 
-        // Find targetable RAs in this church
+        // Count qualifying RAs in this church for display only
         const targetIds = users.filter(u => {
             if (u.churchId !== churchId || u.role !== 'RA') return false;
             if (status === 'ACTIVE' && u.status === 'ACTIVE') return false;
@@ -209,6 +208,7 @@ export default function AdminUsersPage() {
             type: status,
             targetIds,
             isGlobal: false,
+            churchId, // pass churchId so backend can scope the query
             churchName: church?.name
         });
     };
@@ -216,8 +216,8 @@ export default function AdminUsersPage() {
     const executeBulkStatusUpdate = () => {
         if (!bulkConfirmOptions) return;
         bulkUpdateMutation.mutate({
-            userIds: bulkConfirmOptions.targetIds,
-            status: bulkConfirmOptions.type
+            status: bulkConfirmOptions.type,
+            churchId: bulkConfirmOptions.churchId, // undefined for global
         });
     };
 

@@ -124,7 +124,10 @@ export default function ChurchAdminExamsPage() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {exams.map(exam => {
+                        {exams.filter(exam => {
+                            const lvl = exam.ranks?.level ?? 1;
+                            return lvl === userRankLevel + 1; // Only show promotion exams
+                        }).map(exam => {
                             const attempt = getAttempt(exam.id);
                             const completed = isCompleted(attempt);
                             const started = isStarted(attempt);
@@ -136,12 +139,9 @@ export default function ChurchAdminExamsPage() {
                             })();
 
                             const isPaused = exam.status === 'PAUSED';
-                            const examRankLevel = exam.ranks?.level ?? 1;
-                            const isEligible = examRankLevel <= userRankLevel + 1;
-                            const isLocked = !isEligible && !isPaused;
 
                             return (
-                                <div key={exam.id} className={`bg-white dark:bg-slate-900 rounded-2xl border overflow-hidden transition-colors ${isFuture ? 'border-amber-100 dark:border-amber-900/40' : (isPaused ? 'border-orange-200 dark:border-orange-900/50' : (isLocked ? 'border-slate-100 dark:border-slate-800 opacity-80' : 'border-slate-100 dark:border-slate-800'))}`}
+                                <div key={exam.id} className={`bg-white dark:bg-slate-900 rounded-2xl border overflow-hidden transition-colors ${isFuture ? 'border-amber-100 dark:border-amber-900/40' : (isPaused ? 'border-orange-200 dark:border-orange-900/50' : 'border-slate-100 dark:border-slate-800')}`}
                                     style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
                                     <div className={`p-5 border-b ${isFuture ? 'border-amber-50 dark:border-amber-900/30 bg-amber-50/40 dark:bg-amber-900/10' : (isPaused ? 'border-orange-100 dark:border-orange-900/30 bg-orange-50/30 dark:bg-orange-900/10' : 'border-slate-50 dark:border-slate-800')}`}>
                                         <div className="flex items-start gap-3">
@@ -185,10 +185,6 @@ export default function ChurchAdminExamsPage() {
                                         ) : isPaused ? (
                                             <div className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-sm font-semibold cursor-not-allowed select-none border border-orange-200 dark:border-orange-800">
                                                 <Lock className="w-4 h-4" /> Exam Paused by Admin
-                                            </div>
-                                        ) : isLocked ? (
-                                            <div className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-sm font-semibold cursor-not-allowed select-none border border-slate-200 dark:border-slate-700">
-                                                <Lock className="w-4 h-4" /> Locked (Requires Rank)
                                             </div>
                                         ) : isFuture ? (
                                             <div className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-sm font-semibold cursor-not-allowed select-none">

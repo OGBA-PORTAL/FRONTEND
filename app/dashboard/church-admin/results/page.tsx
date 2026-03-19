@@ -172,30 +172,48 @@ export default function ChurchAdminResultsPage() {
                                 ) : detailedResult ? (
                                     <>
                                         {/* Review Header Stats */}
-                                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-5 border border-slate-100 dark:border-slate-800">
-                                            <div className="flex flex-col sm:flex-row justify-between gap-4">
-                                                <div>
-                                                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                                                        {detailedResult.attempt.users?.firstName} {detailedResult.attempt.users?.lastName}
-                                                    </p>
-                                                    <p className="text-xs text-slate-500">{detailedResult.attempt.exams?.title}</p>
-                                                </div>
-                                                <div className="flex gap-4">
-                                                    <div className="text-right">
-                                                        <p className="text-xs text-slate-500">Score</p>
-                                                        <p className={`text-lg font-bold ${detailedResult.attempt.passed ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                            {detailedResult.attempt.score}%
-                                                        </p>
+                                        {(() => {
+                                            const isPassed = detailedResult.attempt.score !== null && detailedResult.attempt.exams?.passMark !== undefined
+                                                ? detailedResult.attempt.score >= detailedResult.attempt.exams.passMark
+                                                : !!detailedResult.attempt.passed;
+                                            
+                                            return (
+                                                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-5 border border-slate-100 dark:border-slate-800">
+                                                    <div className="flex flex-col sm:flex-row justify-between gap-4">
+                                                        <div>
+                                                            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                                                <span>{detailedResult.attempt.users?.firstName} {detailedResult.attempt.users?.lastName}</span>
+                                                                <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/30 text-[10px] font-bold tracking-wider text-blue-600 dark:text-blue-400 uppercase">
+                                                                    {detailedResult.attempt.users?.ranks?.name || 'CANDIDATE (N/A)'}
+                                                                </span>
+                                                            </p>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <p className="text-xs text-slate-500 font-medium">{detailedResult.attempt.exams?.title}</p>
+                                                                {detailedResult.attempt.exams?.ranks?.name && (
+                                                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 uppercase">
+                                                                        FOR {detailedResult.attempt.exams.ranks.name}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex gap-4">
+                                                            <div className="text-right">
+                                                                <p className="text-xs text-slate-500">Score</p>
+                                                                <p className={`text-lg font-bold ${isPassed ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                                    {detailedResult.attempt.score}%
+                                                                </p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-xs text-slate-500">Result</p>
+                                                                <p className={`text-lg font-bold ${isPassed ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                                    {isPassed ? 'PASSED' : 'FAILED'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div className="text-right">
-                                                        <p className="text-xs text-slate-500">Result</p>
-                                                        <p className={`text-lg font-bold ${detailedResult.attempt.passed ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                            {detailedResult.attempt.passed ? 'PASSED' : 'FAILED'}
-                                                        </p>
-                                                    </div>
                                                 </div>
-                                            </div>
-                                        </div>
+                                            );
+                                        })()}
 
                                         {/* Questions Breakdown */}
                                         <div className="space-y-4">
