@@ -252,10 +252,10 @@ export default function AdminResultsPage() {
                                 <thead>
                                     <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
                                         <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Member</th>
-                                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden md:table-cell">Exam</th>
+                                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Exam</th>
                                         <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Score</th>
                                         <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Result</th>
-                                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden lg:table-cell">Date</th>
+                                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Date</th>
                                         <th className="text-right px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
@@ -281,7 +281,7 @@ export default function AdminResultsPage() {
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-5 py-4 hidden md:table-cell">
+                                                <td className="px-5 py-4">
                                                     <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">{attempt.exams?.title ?? '—'}</p>
                                                 </td>
                                                 <td className="px-5 py-4">
@@ -311,10 +311,10 @@ export default function AdminResultsPage() {
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="px-5 py-4 hidden lg:table-cell">
-                                                    <span className="text-sm text-slate-400 dark:text-slate-500">
+                                                <td className="px-5 py-4">
+                                                    <span className="text-sm text-slate-400 dark:text-slate-500 whitespace-nowrap">
                                                         {attempt.submittedAt
-                                                            ? new Date(attempt.submittedAt).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                                                            ? new Date(attempt.submittedAt).toLocaleString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
                                                             : '—'}
                                                     </span>
                                                 </td>

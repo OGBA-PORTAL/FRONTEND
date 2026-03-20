@@ -105,9 +105,9 @@ export default function StudentResultsPage() {
                                                 {(attempt.submittedAt || attempt.completedAt) && (
                                                     <span className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1">
                                                         <Clock className="w-3 h-3" />
-                                                        {new Date(attempt.submittedAt ?? attempt.completedAt!).toLocaleString('en-NG', {
+                                                        {new Date(attempt.submittedAt ?? attempt.completedAt!).toLocaleString('en-US', {
                                                             day: 'numeric', month: 'short', year: 'numeric',
-                                                            hour: '2-digit', minute: '2-digit'
+                                                            hour: 'numeric', minute: '2-digit', hour12: true
                                                         })}
                                                     </span>
                                                 )}

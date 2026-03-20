@@ -122,7 +122,7 @@ export default function ChurchAdminResultsPage() {
                                                 {result.submittedAt && (
                                                     <span className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
                                                         <Clock className="w-3 h-3" />
-                                                        {new Date(result.submittedAt).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                        {new Date(result.submittedAt).toLocaleString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}
                                                     </span>
                                                 )}
                                             </div>
