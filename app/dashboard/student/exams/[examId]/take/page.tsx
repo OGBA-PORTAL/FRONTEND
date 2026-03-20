@@ -72,6 +72,7 @@ export default function TakeExamPage({ params }: { params: Promise<{ examId: str
     const [isSaving, setIsSaving] = useState(false);
     const [initialSeconds, setInitialSeconds] = useState<number | null>(null);
     const [isPaused, setIsPaused] = useState(false);
+    const [showSubmitModal, setShowSubmitModal] = useState(false);
 
     // Anti-Cheat Refs
     const violationCountRef = useRef(0);
@@ -369,7 +370,7 @@ export default function TakeExamPage({ params }: { params: Promise<{ examId: str
 
                         {currentQIndex === questions.length - 1 ? (
                             <button
-                                onClick={() => submitMutation.mutate()}
+                                onClick={() => setShowSubmitModal(true)}
                                 disabled={isSubmitting}
                                 className="flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
                                 style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}>
@@ -438,7 +439,7 @@ export default function TakeExamPage({ params }: { params: Promise<{ examId: str
                     {answeredCount}/{questions.length} completed
                 </div>
                 <button
-                    onClick={() => submitMutation.mutate()}
+                    onClick={() => setShowSubmitModal(true)}
                     disabled={isSubmitting}
                     className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 active:scale-95 disabled:opacity-50 shadow-md shadow-blue-500/20"
                     style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}>
@@ -446,6 +447,36 @@ export default function TakeExamPage({ params }: { params: Promise<{ examId: str
                     Submit Exam
                 </button>
             </div>
+            {/* Submit Confirmation Modal */}
+            {showSubmitModal && (
+                <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 md:p-8 max-w-sm w-full text-center shadow-2xl border border-slate-200 dark:border-slate-800">
+                        <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <CheckCircle className="w-8 h-8 text-blue-600 dark:text-blue-500" />
+                        </div>
+                        <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">Submit Exam?</h2>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 font-medium">
+                            You have answered {answeredCount} out of {questions.length} questions. You cannot change your answers after submitting.
+                        </p>
+                        <div className="flex gap-3 mt-4">
+                            <button onClick={() => setShowSubmitModal(false)}
+                                disabled={isSubmitting}
+                                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">
+                                Go Back
+                            </button>
+                            <button onClick={() => {
+                                setShowSubmitModal(false);
+                                submitMutation.mutate();
+                            }}
+                                disabled={isSubmitting}
+                                className="flex-1 py-2.5 rounded-xl text-white font-bold transition-all hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+                                style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}>
+                                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Yes, Submit'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
 
     );
