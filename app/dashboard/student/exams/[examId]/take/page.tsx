@@ -297,7 +297,7 @@ export default function TakeExamPage({ params }: { params: Promise<{ examId: str
                                 <ExamTimer initialSeconds={initialSeconds} onExpire={handleTimeExpire} />
                             </div>
                             <button
-                                onClick={() => submitMutation.mutate()}
+                                onClick={() => setShowSubmitModal(true)}
                                 disabled={isSubmitting}
                                 className="hidden sm:flex items-center gap-2 px-5 py-2 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
                                 style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}
