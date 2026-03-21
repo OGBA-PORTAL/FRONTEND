@@ -3,7 +3,7 @@ import { User, UserRole, Church, Rank } from '@/lib/types';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
-import { X, Shield, Building2, BookOpen, CheckCircle, XCircle, AlertCircle, Trash2, UserCog, Calendar, Loader2, Edit3, Save } from 'lucide-react';
+import { X, Shield, Building2, BookOpen, CheckCircle, XCircle, AlertCircle, Trash2, UserCog, Calendar, Loader2, Edit3, Save, Key, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -42,6 +42,9 @@ export default function MemberDetailsModal({ user, onClose }: MemberDetailsModal
     const [confirmAction, setConfirmAction] = useState<'SUSPEND' | 'ACTIVATE' | 'DELETE' | null>(null);
     const [isChangingRole, setIsChangingRole] = useState(false);
     const [isEditingProfile, setIsEditingProfile] = useState(false);
+    const [isResettingPassword, setIsResettingPassword] = useState(false);
+    const [newPassword, setNewPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     // Fetch ranks for the edit form
     const { data: ranks = [] } = useQuery<Rank[]>({
@@ -136,6 +139,24 @@ export default function MemberDetailsModal({ user, onClose }: MemberDetailsModal
         }
     });
 
+    const resetPasswordMutation = useMutation({
+        mutationFn: (newPass: string) => api.patch(`/users/${user.id}/force-password-reset`, { newPassword: newPass }),
+        onSuccess: () => {
+            setIsResettingPassword(false);
+            setNewPassword('');
+            toast.success('Password Reset', 'The member\'s password was forcefully updated.');
+        },
+        onError: (err: any) => {
+            toast.error('Reset Failed', err?.response?.data?.message ?? 'Could not reset password.');
+        }
+    });
+
+    const handlePasswordReset = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (newPassword.length < 6) return toast.error('Weak Password', 'The new password must be at least 6 characters.');
+        resetPasswordMutation.mutate(newPassword);
+    };
+
     const canEditProfile = currentUser?.role === 'SYSTEM_ADMIN' || currentUser?.role === 'ASSOCIATION_OFFICER';
 
     const canManageStatus = (() => {
@@ -143,6 +164,18 @@ export default function MemberDetailsModal({ user, onClose }: MemberDetailsModal
         if (currentUser?.role === 'SYSTEM_ADMIN') return true;
         if (currentUser?.role === 'ASSOCIATION_OFFICER') return user.role !== 'SYSTEM_ADMIN';
         if (currentUser?.role === 'CHURCH_ADMIN') return user.role === 'RA';
+        return false;
+    })();
+
+    const canResetPassword = (() => {
+        if (currentUser?.id === user.id) return false;
+        if (currentUser?.role === 'SYSTEM_ADMIN') return true;
+        if (currentUser?.role === 'ASSOCIATION_OFFICER') {
+            return user.role === 'RA' || user.role === 'CHURCH_ADMIN';
+        }
+        if (currentUser?.role === 'CHURCH_ADMIN') {
+            return user.role === 'RA' && currentUser.churchId === user.churchId;
+        }
         return false;
     })();
 
@@ -177,6 +210,7 @@ export default function MemberDetailsModal({ user, onClose }: MemberDetailsModal
     const dateJoined = new Date(user.createdAt).toLocaleString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
     return (
+        <>
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 max-h-[90vh]">
 
@@ -385,6 +419,15 @@ export default function MemberDetailsModal({ user, onClose }: MemberDetailsModal
                                             <Trash2 className="w-4 h-4" /> Delete
                                         </button>
                                     )}
+
+                                    {/* Password Reset */}
+                                    {canResetPassword && (
+                                        <button
+                                            onClick={() => { setIsResettingPassword(true); setConfirmAction(null); setNewPassword(''); setShowPassword(false); }}
+                                            className="flex items-center gap-2 px-4 py-2 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 rounded-xl text-sm font-semibold hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors">
+                                            <Key className="w-4 h-4" /> Reset Password
+                                        </button>
+                                    )}
                                 </div>
 
                                 {/* Inline Confirmation Panels */}
@@ -414,11 +457,96 @@ export default function MemberDetailsModal({ user, onClose }: MemberDetailsModal
                                         </div>
                                     </div>
                                 )}
+
+
                             </div>
                         )}
                     </div>
                 </div>
             </div>
-        </div >
+        </div>
+
+        {/* Force Password Reset Overlay Modal */}
+        {isResettingPassword && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-in zoom-in-95 duration-200">
+                    <div className="relative h-28 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
+                        <button onClick={() => { setIsResettingPassword(false); setNewPassword(''); setShowPassword(false); }}
+                            className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/40 transition-colors">
+                            <X className="w-4 h-4" />
+                        </button>
+                        <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-lg">
+                            <Key className="w-8 h-8 text-white" />
+                        </div>
+                    </div>
+                    <div className="p-6">
+                        <div className="text-center mb-6">
+                            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-1">Reset Password</h2>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                                Setting a new password for <span className="font-semibold text-slate-700 dark:text-slate-300">{user.firstName} {user.lastName}</span>
+                            </p>
+                        </div>
+                        <form onSubmit={handlePasswordReset} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">New Password</label>
+                                <div className="relative">
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        placeholder="Enter at least 6 characters"
+                                        autoFocus
+                                        className="w-full pr-11 pl-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-sm focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 dark:text-slate-200 transition-all"
+                                    />
+                                    <button type="button" onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
+                                </div>
+                            </div>
+                            {newPassword.length > 0 && (() => {
+                                const len = newPassword.length;
+                                const strength = len < 6 ? 1 : len < 10 ? 2 : len < 14 ? 3 : 4;
+                                const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+                                const colors = ['', 'bg-red-500', 'bg-amber-400', 'bg-blue-500', 'bg-emerald-500'];
+                                const textColors = ['', 'text-red-500', 'text-amber-500', 'text-blue-500', 'text-emerald-500'];
+                                return (
+                                    <div>
+                                        <div className="flex gap-1 mb-1">
+                                            {[1,2,3,4].map(i => (
+                                                <div key={i} className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${i <= strength ? colors[strength] : 'bg-slate-200 dark:bg-slate-700'}`} />
+                                            ))}
+                                        </div>
+                                        <p className={`text-xs font-semibold ${textColors[strength]}`}>{labels[strength]}</p>
+                                    </div>
+                                );
+                            })()}
+                            <div className="flex gap-2 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-xl">
+                                <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                                <p className="text-xs font-medium text-amber-700 dark:text-amber-300 leading-relaxed">
+                                    Share the new password with this member and advise them to update it from their profile settings after logging in.
+                                </p>
+                            </div>
+                            <div className="flex gap-3 pt-2">
+                                <button type="button"
+                                    onClick={() => { setIsResettingPassword(false); setNewPassword(''); setShowPassword(false); }}
+                                    className="flex-1 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                    Cancel
+                                </button>
+                                <button type="submit"
+                                    disabled={resetPasswordMutation.isPending || newPassword.length < 6}
+                                    className="flex-1 flex justify-center items-center gap-2 py-3 rounded-xl text-white text-sm font-bold transition-all hover:opacity-90 active:scale-95 disabled:opacity-40 shadow-lg shadow-violet-500/25"
+                                    style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
+                                    {resetPasswordMutation.isPending
+                                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Resetting...</>
+                                        : <><Key className="w-4 h-4" /> Reset Password</>}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        )}
+        </>
     );
 }
