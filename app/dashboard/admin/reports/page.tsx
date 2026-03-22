@@ -4,8 +4,8 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useState } from 'react';
-import { Loader2, Printer, Search, Building2, MapPin, Award, FileText, Eye, X, CheckCircle, XCircle } from 'lucide-react';
-import Link from 'next/link';
+import raLogo from '@/app/assets/ralogo.png';
+import { Loader2, Printer, Search, Building2, Award, FileText, Eye, X, CheckCircle, XCircle } from 'lucide-react';
 
 export default function AdminReportsPage() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -25,9 +25,14 @@ export default function AdminReportsPage() {
 
     const handlePrint = (targetId: string | null = null) => {
         setPrintTarget(targetId);
+        // Temporarily force light mode so dark-mode Tailwind classes don't hide text
+        const htmlEl = document.documentElement;
+        const wasDark = htmlEl.classList.contains('dark');
+        if (wasDark) htmlEl.classList.remove('dark');
         setTimeout(() => {
             window.print();
-        }, 50);
+            if (wasDark) htmlEl.classList.add('dark');
+        }, 150);
     };
 
     const [reviewModalOpen, setReviewModalOpen] = useState(false);
@@ -48,11 +53,74 @@ export default function AdminReportsPage() {
         setReviewModalOpen(true);
     };
 
+    const printDate = new Date().toLocaleDateString('en-GB', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+
+    const formatRank = (name: string) => {
+        if (!name) return 'N/A (Candidate)';
+        const l = name.trim().toLowerCase();
+        if (l === 'unknown' || l === 'unknown rank' || l === 'n/a' || l === 'null') return 'N/A (Candidate)';
+        return name;
+    };
+
     return (
         <ProtectedRoute allowedRoles={['SYSTEM_ADMIN', 'ASSOCIATION_OFFICER']}>
+
+            {/* ============================================================
+                PRINT CSS — overrides dashboard layout overflow clipping
+            ============================================================ */}
+            <style jsx global>{`
+                @media print {
+                    @page { size: A4 portrait; margin: 1.2cm 1cm; }
+
+                    /* Override the dashboard layout overflow-hidden / overflow-y-auto */
+                    html, body { height: auto !important; overflow: visible !important; background: white !important; color: #1e293b !important; }
+                    body > div, body > div > div,
+                    [class*="flex"][class*="h-screen"],
+                    [class*="overflow-hidden"],
+                    [class*="overflow-y-auto"] {
+                        height: auto !important; overflow: visible !important; max-height: none !important;
+                    }
+                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                    aside, header, nav, [role="navigation"], .no-print { display: none !important; }
+                    .rpt-letterhead { display: flex !important; }
+                    .rpt-church { page-break-before: always; break-before: page; }
+                    .rpt-church-first { page-break-before: auto; break-before: auto; }
+                    .rpt-rank { page-break-inside: avoid; break-inside: avoid; }
+                    /* Keep heading with its table — no orphaned titles */
+                    .rpt-exam-heading { page-break-after: avoid; break-after: avoid; }
+                    h2, h3, h4 { page-break-after: avoid; break-after: avoid; }
+                    /* Widow / orphan control on table content */
+                    tr { page-break-inside: avoid; break-inside: avoid; }
+                    tbody { orphans: 3; widows: 3; }
+                    * { box-shadow: none !important; border-radius: 0 !important; }
+                }
+            `}</style>
+
+            {/* ============================================================
+                PRINT LETTERHEAD (screen: hidden, print: visible)
+            ============================================================ */}
+            <div className="rpt-letterhead" style={{ display: 'none', alignItems: 'center', gap: '16px', borderBottom: '4px solid #1e3a8a', paddingBottom: '12px', marginBottom: '20px', width: '100%' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={raLogo.src} alt="RA Logo" style={{ width: 68, height: 68, objectFit: 'contain' }} />
+                <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: '15px', fontWeight: 900, color: '#1e3a8a', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Royal Ambassadors — OGBA Association</p>
+                    <p style={{ fontSize: '11px', color: '#475569', marginTop: '2px', margin: 0 }}>Official Exam Performance Report</p>
+                </div>
+                <div style={{ textAlign: 'right', fontSize: '10px', color: '#64748b' }}>
+                    <p style={{ fontWeight: 700, margin: 0 }}>Printed on</p>
+                    <p style={{ margin: 0 }}>{printDate}</p>
+                </div>
+            </div>
+
+            {/* ============================================================
+                SCREEN PAGE
+            ============================================================ */}
             <div className="space-y-6 max-w-6xl mx-auto pb-12">
-                {/* Header (Hidden in Print) */}
-                <div className="print:hidden flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+
+                {/* Screen header — hidden in print */}
+                <div className="no-print flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
                     <div>
                         <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-200">Official Exam Reports</h1>
                         <p className="text-slate-500 text-sm mt-1">Hierarchical performance breakdown across all churches & exams.</p>
@@ -60,16 +128,13 @@ export default function AdminReportsPage() {
                     <div className="flex gap-3">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <input
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
+                            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
                                 placeholder="Search by church name..."
-                                className="pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 dark:text-slate-300 w-full"
-                            />
+                                className="pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 dark:text-slate-300 w-64" />
                         </div>
-                        <button onClick={() => handlePrint(null)} className="flex items-center gap-2 bg-slate-800 dark:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-700 dark:hover:bg-slate-600 transition-colors">
-                            <Printer className="w-4 h-4" />
-                            Print
+                        <button onClick={() => handlePrint(null)}
+                            className="no-print flex items-center gap-2 bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-bold hover:bg-blue-800 transition-colors shadow-md shadow-blue-700/20">
+                            <Printer className="w-4 h-4" /> Print All
                         </button>
                     </div>
                 </div>
@@ -79,116 +144,152 @@ export default function AdminReportsPage() {
                         <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
                     </div>
                 ) : filteredChurches.length === 0 ? (
-                    <div className="text-center p-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 print:hidden">
+                    <div className="no-print text-center p-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
                         <FileText className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-3" />
                         <p className="text-slate-500 font-medium text-lg">No reporting data found.</p>
                     </div>
                 ) : (
-                    <div className="space-y-12">
-                        {filteredChurches.map(churchName => {
+                    <div className="space-y-10">
+                        {filteredChurches.map((churchName, ci) => {
                             const churchId = `c/${churchName}`;
                             const showChurch = !printTarget || printTarget.startsWith(churchId);
 
                             return (
-                                <div key={churchName} className={`bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden print:border-none print:shadow-none print:break-inside-avoid ${!showChurch ? 'print:hidden' : ''}`}>
-                                    {/* Church Header */}
-                                    <div className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-6 print:bg-transparent print:border-b-2 print:border-black print:pb-2">
-                                        <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-2 uppercase tracking-wide">
-                                            <Building2 className="w-6 h-6 text-blue-600 dark:text-blue-400 print:hidden" />
-                                            <span className="flex-1">{churchName}</span>
-                                            <button onClick={() => handlePrint(churchId)} className="print:hidden p-1.5 rounded-lg text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 transition-colors" title={`Print ${churchName} Report`}>
-                                                <Printer className="w-4 h-4" />
-                                            </button>
-                                        </h2>
+                                <div key={churchName}
+                                    className={`bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm ${ci === 0 ? 'rpt-church-first' : 'rpt-church'} ${!showChurch ? 'no-print' : ''}`}>
+
+                                    {/* Church header */}
+                                    <div style={{ background: '#1e40af', color: 'white', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                            <Building2 className="no-print w-5 h-5" style={{ opacity: 0.8 }} />
+                                            <div>
+                                                <h2 style={{ fontWeight: 900, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>{churchName}</h2>
+                                                <p className="no-print" style={{ fontSize: 11, opacity: 0.75, margin: 0 }}>
+                                                    {Object.keys(report[churchName]).length} exam(s)
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => handlePrint(churchId)}
+                                            className="no-print text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                                            style={{ background: 'rgba(255,255,255,0.2)', color: 'white' }}>
+                                            <Printer className="w-3.5 h-3.5 inline mr-1" /> Print Church
+                                        </button>
                                     </div>
 
-                                    <div className="p-6 space-y-8">
+                                    <div className="p-5 space-y-8">
                                         {Object.keys(report[churchName]).map(examTitle => {
                                             const examId = `${churchId}/e/${examTitle}`;
                                             const showExam = !printTarget || printTarget === churchId || printTarget.startsWith(examId);
 
                                             return (
-                                                <div key={examTitle} className={`space-y-6 print:break-inside-avoid ${!showExam ? 'print:hidden' : ''}`}>
-                                                    {/* Exam Title */}
-                                                    <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between border-l-4 border-blue-500 pl-3">
-                                                        <div className="flex items-center gap-2">
-                                                            <FileText className="w-5 h-5 text-slate-400 print:hidden" />
-                                                            {examTitle}
-                                                        </div>
-                                                        <button onClick={() => handlePrint(examId)} className="print:hidden p-1.5 rounded-lg text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 transition-colors" title={`Print ${examTitle} for ${churchName}`}>
-                                                            <Printer className="w-4 h-4" />
+                                                <div key={examTitle} className={!showExam ? 'no-print' : ''}>
+                                                    {/* Exam title */}
+                                                    <div className="rpt-exam-heading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: '5px solid #2563eb', paddingLeft: 12, marginBottom: 16 }}>
+                                                        <h3 style={{ fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#1e293b', margin: 0 }}>{examTitle}</h3>
+                                                        <button onClick={() => handlePrint(examId)}
+                                                            className="no-print text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-colors">
+                                                            <Printer className="w-3.5 h-3.5 inline mr-1" /> Print Exam
                                                         </button>
-                                                    </h3>
+                                                    </div>
 
-                                                    {Object.keys(report[churchName][examTitle]).map(rankName => {
-                                                        const rankId = `${examId}/r/${rankName}`;
-                                                        const showRank = !printTarget || printTarget === churchId || printTarget === examId || printTarget === rankId;
-                                                        const group = report[churchName][examTitle][rankName];
+                                                    <div className="space-y-6">
+                                                        {Object.keys(report[churchName][examTitle]).map(rankName => {
+                                                            const rankId = `${examId}/r/${rankName}`;
+                                                            const showRank = !printTarget || printTarget === churchId || printTarget === examId || printTarget === rankId;
+                                                            const group = report[churchName][examTitle][rankName];
+                                                            const displayRank = formatRank(rankName);
 
-                                                        return (
-                                                            <div key={rankName} className={`ml-4 space-y-4 ${!showRank ? 'print:hidden' : ''}`}>
-                                                                {/* Rank Header + Aggregate Stats */}
-                                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl print:bg-transparent print:p-0 print:border-b print:border-slate-300">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Award className="w-5 h-5 text-amber-500 print:hidden" />
-                                                                        <span className="font-bold text-slate-800 dark:text-slate-200 uppercase text-sm">{rankName} Rank</span>
-                                                                        <button onClick={() => handlePrint(rankId)} className="print:hidden p-1.5 ml-2 rounded-lg text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 transition-colors" title={`Print ${rankName} for ${examTitle}`}>
-                                                                            <Printer className="w-4 h-4" />
-                                                                        </button>
+                                                            return (
+                                                                <div key={rankName} className={`rpt-rank ${!showRank ? 'no-print' : ''}`}>
+                                                                    {/* Rank stats bar */}
+                                                                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: '#f8fafc', border: '1px solid #e2e8f0', padding: '10px 14px', marginBottom: 6 }}>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                                            <Award className="no-print w-4 h-4 text-amber-500" />
+                                                                            <span style={{ fontWeight: 900, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#1e293b' }}>{displayRank}</span>
+                                                                            <button onClick={() => handlePrint(rankId)} className="no-print ml-1 p-1 rounded text-slate-400 hover:bg-slate-200 transition-colors">
+                                                                                <Printer className="w-3.5 h-3.5" />
+                                                                            </button>
+                                                                        </div>
+                                                                        <div style={{ display: 'flex', gap: 16, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                                                            <span style={{ color: '#64748b' }}>Total: <strong style={{ color: '#1e293b' }}>{group.stats.total}</strong></span>
+                                                                            <span style={{ color: '#059669' }}>✓ Passed: {group.stats.passed}</span>
+                                                                            <span style={{ color: '#dc2626' }}>✗ Failed: {group.stats.failed}</span>
+                                                                            <span style={{ color: '#1d4ed8' }}>Avg: {group.stats.avgScore}%</span>
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="flex items-center gap-6 text-xs font-semibold uppercase tracking-wide">
-                                                                        <span className="text-slate-500">Total: <span className="text-slate-800 dark:text-slate-200">{group.stats.total}</span></span>
-                                                                        <span className="text-emerald-600 dark:text-emerald-400">Passed: {group.stats.passed}</span>
-                                                                        <span className="text-red-600 dark:text-red-400">Failed: {group.stats.failed}</span>
-                                                                        <span className="text-blue-600 dark:text-blue-400">Avg Score: {group.stats.avgScore}%</span>
-                                                                    </div>
-                                                                </div>
 
-                                                                {/* Result Table */}
-                                                                <div className="overflow-x-auto ring-1 ring-slate-200 dark:ring-slate-700 rounded-xl print:ring-0">
-                                                                    <table className="w-full text-sm text-left">
-                                                                        <thead className="text-xs text-slate-600 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 uppercase print:bg-transparent print:border-black">
-                                                                            <tr>
-                                                                                <th className="px-4 py-3 font-semibold">RA Number</th>
-                                                                                <th className="px-4 py-3 font-semibold">Name</th>
-                                                                                <th className="px-4 py-3 font-semibold text-center">Score</th>
-                                                                                <th className="px-4 py-3 font-semibold text-right">Result</th>
-                                                                                <th className="px-4 py-3 font-semibold text-right print:hidden">Review</th>
-                                                                            </tr>
-                                                                        </thead>
-                                                                        <tbody className="divide-y divide-slate-200 dark:divide-slate-700 text-slate-800 dark:text-slate-300">
-                                                                            {group.members.map((member: any) => (
-                                                                                <tr key={member.raNumber} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 print:hover:bg-transparent">
-                                                                                    <td className="px-4 py-3 font-mono text-xs">{member.raNumber}</td>
-                                                                                    <td className="px-4 py-3 font-medium">{member.name}</td>
-                                                                                    <td className="px-4 py-3 text-center font-bold">
-                                                                                        {member.score !== null ? `${member.score}%` : 'N/A'}
-                                                                                    </td>
-                                                                                    <td className={`px-4 py-3 text-right font-bold ${member.passed ? 'text-emerald-600 dark:text-emerald-400 print:text-black' : 'text-red-600 dark:text-red-400 print:text-black'}`}>
-                                                                                        {member.score !== null ? (member.passed ? 'PASSED' : 'FAILED') : 'PENDING'}
-                                                                                    </td>
-                                                                                    <td className="px-4 py-3 text-right print:hidden">
-                                                                                        {member.attemptId ? (
-                                                                                            <button onClick={() => handleReview(member.attemptId)}
-                                                                                                className="p-1.5 inline-block rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors"
-                                                                                                title="Review Answers">
-                                                                                                <Eye className="w-4 h-4" />
-                                                                                            </button>
-                                                                                        ) : (
-                                                                                            <span className="text-xs text-slate-400">N/A</span>
-                                                                                        )}
-                                                                                    </td>
+                                                                    {/* Results table */}
+                                                                    <div className="overflow-x-auto" style={{ border: '1px solid #e2e8f0' }}>
+                                                                        <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse', textAlign: 'left' }}>
+                                                                            <thead>
+                                                                                <tr style={{ background: '#334155', color: 'white' }}>
+                                                                                    <th style={{ padding: '8px 10px', fontWeight: 700 }}>#</th>
+                                                                                    <th style={{ padding: '8px 10px', fontWeight: 700 }}>RA Number</th>
+                                                                                    <th style={{ padding: '8px 10px', fontWeight: 700 }}>Full Name</th>
+                                                                                    <th style={{ padding: '8px 10px', fontWeight: 700, textAlign: 'center' }}>Score</th>
+                                                                                    <th style={{ padding: '8px 10px', fontWeight: 700, textAlign: 'center' }}>Result</th>
+                                                                                    <th className="no-print" style={{ padding: '8px 10px', fontWeight: 700, textAlign: 'right' }}>Review</th>
                                                                                 </tr>
-                                                                            ))}
-                                                                        </tbody>
-                                                                    </table>
+                                                                            </thead>
+                                                                            <tbody>
+                                                                                {group.members.map((member: any, idx: number) => {
+                                                                                    const passed = member.score !== null && member.passed;
+                                                                                    const failed = member.score !== null && !member.passed;
+                                                                                    return (
+                                                                                        <tr key={member.raNumber} style={{ background: idx % 2 === 0 ? '#ffffff' : '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+                                                                                            <td style={{ padding: '7px 10px', color: '#94a3b8', fontSize: 11, fontWeight: 600 }}>{idx + 1}</td>
+                                                                                            <td style={{ padding: '7px 10px', fontFamily: 'monospace', fontSize: 11, color: '#475569' }}>{member.raNumber}</td>
+                                                                                            <td style={{ padding: '7px 10px', fontWeight: 600, color: '#1e293b' }}>{member.name}</td>
+                                                                                            <td style={{ padding: '7px 10px', textAlign: 'center', fontWeight: 900, fontSize: 13, color: passed ? '#059669' : failed ? '#dc2626' : '#94a3b8' }}>
+                                                                                                {member.score !== null ? `${member.score}%` : '—'}
+                                                                                            </td>
+                                                                                            <td style={{ padding: '7px 10px', textAlign: 'center' }}>
+                                                                                                {member.score !== null ? (
+                                                                                                    <span style={{
+                                                                                                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                                                                                                        padding: '2px 10px', borderRadius: 99, fontSize: 11, fontWeight: 900, textTransform: 'uppercase',
+                                                                                                        background: passed ? '#d1fae5' : '#fee2e2',
+                                                                                                        color: passed ? '#065f46' : '#991b1b',
+                                                                                                    }}>
+                                                                                                        {passed ? '✓ Passed' : '✗ Failed'}
+                                                                                                    </span>
+                                                                                                ) : <span style={{ color: '#94a3b8', fontSize: 11 }}>Pending</span>}
+                                                                                            </td>
+                                                                                            <td className="no-print" style={{ padding: '7px 10px', textAlign: 'right' }}>
+                                                                                                {member.attemptId ? (
+                                                                                                    <button onClick={() => handleReview(member.attemptId)} className="p-1.5 rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                                                                                                        <Eye className="w-4 h-4" />
+                                                                                                    </button>
+                                                                                                ) : <span style={{ color: '#94a3b8', fontSize: 11 }}>—</span>}
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                    );
+                                                                                })}
+                                                                            </tbody>
+                                                                            <tfoot>
+                                                                                <tr style={{ background: '#f1f5f9', borderTop: '2px solid #cbd5e1' }}>
+                                                                                    <td colSpan={3} style={{ padding: '6px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Summary</td>
+                                                                                    <td style={{ padding: '6px 10px', textAlign: 'center', fontSize: 11, fontWeight: 900, color: '#1d4ed8' }}>{group.stats.avgScore}% avg</td>
+                                                                                    <td style={{ padding: '6px 10px', textAlign: 'center', fontSize: 11, fontWeight: 900 }}>
+                                                                                        <span style={{ color: '#065f46' }}>{group.stats.passed} passed</span> / <span style={{ color: '#991b1b' }}>{group.stats.failed} failed</span>
+                                                                                    </td>
+                                                                                    <td className="no-print" />
+                                                                                </tr>
+                                                                            </tfoot>
+                                                                        </table>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        );
-                                                    })}
+                                                            );
+                                                        })}
+                                                    </div>
                                                 </div>
                                             );
                                         })}
+                                    </div>
+
+                                    {/* Print footer per church */}
+                                    <div style={{ display: 'none', borderTop: '1px solid #cbd5e1', margin: '0 16px 12px', paddingTop: 6 }} className="rpt-footer">
+                                        <p style={{ fontSize: 9, color: '#94a3b8', textAlign: 'right', margin: 0 }}>Royal Ambassadors OGBA Association — Confidential Exam Report — {printDate}</p>
                                     </div>
                                 </div>
                             );
@@ -197,23 +298,21 @@ export default function AdminReportsPage() {
                 )}
             </div>
 
-            {/* Detailed Review Modal Side-over */}
+            {/* ============================================================
+                REVIEW MODAL
+            ============================================================ */}
             {reviewModalOpen && (
-                <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/50 backdrop-blur-sm transition-opacity print:hidden">
+                <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/50 backdrop-blur-sm no-print">
                     <div className="bg-white dark:bg-slate-900 w-full max-w-2xl h-full shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
-                        {/* Header */}
                         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
                             <div>
                                 <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">Result Review</h2>
                                 <p className="text-sm text-slate-500 dark:text-slate-400">Detailed question breakdown</p>
                             </div>
-                            <button onClick={() => setReviewModalOpen(false)}
-                                className="p-2 rounded-lg text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+                            <button onClick={() => setReviewModalOpen(false)} className="p-2 rounded-lg text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
-
-                        {/* Content */}
                         <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#f0f4ff]/50 dark:bg-slate-950/50">
                             {isReviewLoading ? (
                                 <div className="flex flex-col items-center justify-center h-40">
@@ -222,7 +321,6 @@ export default function AdminReportsPage() {
                                 </div>
                             ) : detailedResult ? (
                                 <>
-                                    {/* Review Header Stats */}
                                     <div className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
                                         <div className="flex flex-col sm:flex-row justify-between gap-4">
                                             <div>
@@ -234,59 +332,40 @@ export default function AdminReportsPage() {
                                             <div className="flex gap-4">
                                                 <div className="text-right">
                                                     <p className="text-xs text-slate-500">Score</p>
-                                                    <p className={`text-lg font-bold ${detailedResult.attempt.passed ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                        {detailedResult.attempt.score}%
-                                                    </p>
+                                                    <p className={`text-lg font-bold ${detailedResult.attempt.passed ? 'text-emerald-500' : 'text-red-500'}`}>{detailedResult.attempt.score}%</p>
                                                 </div>
                                                 <div className="text-right">
                                                     <p className="text-xs text-slate-500">Result</p>
-                                                    <p className={`text-lg font-bold ${detailedResult.attempt.passed ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                        {detailedResult.attempt.passed ? 'PASSED' : 'FAILED'}
-                                                    </p>
+                                                    <p className={`text-lg font-bold ${detailedResult.attempt.passed ? 'text-emerald-500' : 'text-red-500'}`}>{detailedResult.attempt.passed ? 'PASSED' : 'FAILED'}</p>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-
-                                    {/* Questions Breakdown */}
                                     <div className="space-y-4 pb-12">
                                         <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm px-1">Questions & Answers</h3>
                                         {detailedResult.questions.map((q: any, i: number) => (
-                                            <div key={q.id} className={`p-5 rounded-xl border bg-white dark:bg-slate-900 shadow-sm ${q.isCorrect ? 'border-l-4 border-l-emerald-500 border-slate-200 dark:border-y-slate-800 dark:border-r-slate-800' : 'border-l-4 border-l-red-500 border-slate-200 dark:border-y-slate-800 dark:border-r-slate-800'}`}>
+                                            <div key={q.id} className={`p-5 rounded-xl border bg-white dark:bg-slate-900 shadow-sm ${q.isCorrect ? 'border-l-4 border-l-emerald-500 border-slate-200' : 'border-l-4 border-l-red-500 border-slate-200'}`}>
                                                 <div className="flex justify-between gap-4 mb-4">
                                                     <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-relaxed">
-                                                        <span className="font-bold text-slate-400 dark:text-slate-500 mr-2">{i + 1}.</span>
-                                                        {q.text}
+                                                        <span className="font-bold text-slate-400 mr-2">{i + 1}.</span>{q.text}
                                                     </p>
-                                                    <span className={`text-[10px] font-black uppercase tracking-widest whitespace-nowrap px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 self-start ${q.isCorrect ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+                                                    <span className={`text-[10px] font-black uppercase tracking-widest whitespace-nowrap px-2 py-1 rounded-md bg-slate-100 self-start ${q.isCorrect ? 'text-emerald-600' : 'text-red-500'}`}>
                                                         {q.pointsText} pts
                                                     </span>
                                                 </div>
-
                                                 <div className="space-y-2.5">
                                                     {q.options.map((opt: any) => {
-                                                        const isCorrectOption = opt.id === q.correctOptionId;
-                                                        const isStudentOption = opt.id === q.studentAnswerId;
-
-                                                        let borderClass = "border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50";
-                                                        let textClass = "text-slate-600 dark:text-slate-400";
-                                                        let icon = <div className="w-4 h-4 rounded-full border border-slate-300 dark:border-slate-600" />;
-
-                                                        if (isCorrectOption) {
-                                                            borderClass = "border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-900/20";
-                                                            textClass = "text-emerald-800 dark:text-emerald-300 font-medium";
-                                                            icon = <CheckCircle className="w-4 h-4 text-emerald-500" />;
-                                                        } else if (isStudentOption && !isCorrectOption) {
-                                                            borderClass = "border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/20";
-                                                            textClass = "text-red-800 dark:text-red-300";
-                                                            icon = <XCircle className="w-4 h-4 text-red-500" />;
-                                                        }
-
+                                                        const isCorrect = opt.id === q.correctOptionId;
+                                                        const isStudent = opt.id === q.studentAnswerId;
+                                                        let cls = 'border-slate-100 bg-slate-50 text-slate-600';
+                                                        let icon = <div className="w-4 h-4 rounded-full border border-slate-300" />;
+                                                        if (isCorrect) { cls = 'border-emerald-200 bg-emerald-50 text-emerald-800 font-medium'; icon = <CheckCircle className="w-4 h-4 text-emerald-500" />; }
+                                                        else if (isStudent) { cls = 'border-red-200 bg-red-50 text-red-800'; icon = <XCircle className="w-4 h-4 text-red-500" />; }
                                                         return (
-                                                            <div key={opt.id} className={`flex items-center gap-3 p-3.5 rounded-xl border transition-colors ${borderClass} ${textClass}`}>
+                                                            <div key={opt.id} className={`flex items-center gap-3 p-3.5 rounded-xl border ${cls}`}>
                                                                 <div className="w-5 flex justify-center flex-shrink-0">{icon}</div>
                                                                 <span className="flex-1 text-sm">{opt.text}</span>
-                                                                {isStudentOption && <span className="text-[10px] uppercase font-bold tracking-wider opacity-60 bg-black/5 dark:bg-white/10 px-2 py-0.5 rounded">Selected</span>}
+                                                                {isStudent && <span className="text-[10px] uppercase font-bold opacity-60 bg-black/5 px-2 py-0.5 rounded">Selected</span>}
                                                             </div>
                                                         );
                                                     })}
@@ -296,29 +375,14 @@ export default function AdminReportsPage() {
                                     </div>
                                 </>
                             ) : (
-                                <div className="flex flex-col items-center justify-center h-40">
-                                    <p className="text-slate-500 text-sm">Failed to load detailed answers.</p>
+                                <div className="flex items-center justify-center h-40">
+                                    <p className="text-slate-500 text-sm">Failed to load answers.</p>
                                 </div>
                             )}
                         </div>
                     </div>
                 </div>
             )}
-
-            <style jsx global>{`
-                @media print {
-                    @page { margin: 1.5cm; }
-                    body { background: white !important; color: black !important; }
-                    nav, sidebar, header { display: none !important; }
-                    .print\\:hidden { display: none !important; }
-                    * {
-                        box-shadow: none !important;
-                        text-shadow: none !important;
-                        background: transparent !important;
-                    }
-                }
-            `}</style>
         </ProtectedRoute>
     );
 }
-
