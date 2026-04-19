@@ -5,8 +5,10 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useState, useMemo } from 'react';
 import raLogo from '@/app/assets/ralogo.png';
-import { Loader2, Printer, Search, Building2, Award, FileText, Eye, X, CheckCircle, XCircle, TrendingUp, Users, BarChart3, LayoutList, Presentation } from 'lucide-react';
+import { Loader2, Printer, Search, Building2, Award, FileText, Eye, X, CheckCircle, XCircle, TrendingUp, Users, BarChart3, Presentation, Download, LayoutList } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import * as XLSX from 'xlsx';
+import { toast } from 'react-hot-toast';
 
 const RANK_ORDER = [
     'n/a (candidate)',
@@ -29,6 +31,7 @@ const getRankWeight = (name: string) => {
 export default function AdminReportsPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState<'church' | 'rank' | 'insights'>('church');
+    const [reportMode, setReportMode] = useState<'full' | 'exam'>('full');
 
     const { data, isLoading } = useQuery({
         queryKey: ['global-report'],
@@ -48,7 +51,6 @@ export default function AdminReportsPage() {
 
     const handlePrint = (targetId: string | null = null) => {
         setPrintTarget(targetId);
-        // Temporarily force light mode so dark-mode Tailwind classes don't hide text
         const htmlEl = document.documentElement;
         const wasDark = htmlEl.classList.contains('dark');
         if (wasDark) htmlEl.classList.remove('dark');
@@ -58,8 +60,53 @@ export default function AdminReportsPage() {
         }, 150);
     };
 
+    const handleExportExcel = () => {
+        if (!rawData.length) return;
+
+        const dataToExport = rawData.map((a: any) => {
+            if (reportMode === 'exam') {
+                return {
+                    'RA Number': a.users?.raNumber,
+                    'First Name': a.users?.firstName,
+                    'Last Name': a.users?.lastName,
+                    'Church': a.users?.churches?.name,
+                    'Rank': a.users?.ranks?.name,
+                    'Exam Title': a.exams?.title,
+                    'Exam Score (%)': a.examScore || a.score,
+                    'Date': new Date(a.submittedAt).toLocaleDateString()
+                };
+            } else {
+                return {
+                    'RA Number': a.users?.raNumber,
+                    'First Name': a.users?.firstName,
+                    'Last Name': a.users?.lastName,
+                    'Church': a.users?.churches?.name,
+                    'Rank': a.users?.ranks?.name,
+                    'Exam Title': a.exams?.title,
+                    'Exam Component (80)': Math.round((a.examScore || a.score || 0) * 0.8),
+                    'LTC Score (10)': a.ltcScore || 0,
+                    'Hiking Score (10)': a.hikingScore || 0,
+                    'Final Total (100)': a.score,
+                    'Passed': a.passed ? 'YES' : 'NO',
+                    'Date': new Date(a.submittedAt).toLocaleDateString()
+                };
+            }
+        });
+
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Reports");
+        XLSX.writeFile(wb, `OGBA_Report_${reportMode}_${new Date().toISOString().split('T')[0]}.xlsx`);
+        toast.success('Excel file downloaded');
+    };
+
     const [reviewModalOpen, setReviewModalOpen] = useState(false);
     const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
+
+    const handleReview = (id: string) => {
+        setSelectedAttemptId(id);
+        setReviewModalOpen(true);
+    };
 
     const { data: detailedResult, isLoading: isReviewLoading } = useQuery<any>({
         queryKey: ['admin-result-detail', selectedAttemptId],
@@ -70,11 +117,6 @@ export default function AdminReportsPage() {
         },
         enabled: !!selectedAttemptId && reviewModalOpen
     });
-
-    const handleReview = (id: string) => {
-        setSelectedAttemptId(id);
-        setReviewModalOpen(true);
-    };
 
     const printDate = new Date().toLocaleDateString('en-GB', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
@@ -87,8 +129,6 @@ export default function AdminReportsPage() {
         return name;
     };
 
-    // --- ENHANCED GROUPING: BY RANK ---
-    // Rank -> Exam -> Members
     const groupedByRank = useMemo(() => {
         if (!rawData.length) return {};
         const grouping: any = {};
@@ -106,7 +146,7 @@ export default function AdminReportsPage() {
             }
 
             const group = grouping[rankName][examTitle];
-            const didPass = a._livePassed; // from our backend fix
+            const didPass = a._livePassed;
 
             group.members.push({
                 attemptId: a.id,
@@ -114,6 +154,9 @@ export default function AdminReportsPage() {
                 church: a.users?.churches?.name || 'Unknown Church',
                 raNumber: a.users.raNumber,
                 score: a.score,
+                examScore: a.examScore,
+                ltcScore: a.ltcScore,
+                hikingScore: a.hikingScore,
                 passed: didPass
             });
 
@@ -126,11 +169,9 @@ export default function AdminReportsPage() {
         return grouping;
     }, [rawData]);
 
-    // Ranks array for the "By Rank" view
     const ranks = Object.keys(groupedByRank).sort((a, b) => getRankWeight(a) - getRankWeight(b));
     const filteredRanks = ranks.filter(r => r.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    // --- DEEP ANALYTICS / INSIGHTS ---
     const insights = useMemo(() => {
         if (!rawData.length) return null;
 
@@ -166,7 +207,6 @@ export default function AdminReportsPage() {
             if (didPass) examStats[eName].passed++;
             examStats[eName].score += (a.score || 0);
 
-            // Keep top 100 for sorting later
             if (a.score !== null) {
                 const performer = {
                     name: `${a.users?.firstName} ${a.users?.lastName}`,
@@ -177,13 +217,10 @@ export default function AdminReportsPage() {
                 };
                 
                 topCandidates.push(performer);
-                
-                // Also track for rank-specific leaderboards
                 rankStats[rName].topPerformers.push(performer);
             }
         });
 
-        // Calculate Rank Chart Data
         const chartRankData = Object.keys(rankStats).map(r => ({
             name: r,
             passed: rankStats[r].passed,
@@ -192,7 +229,6 @@ export default function AdminReportsPage() {
             total: rankStats[r].total
         })).sort((a, b) => b.total - a.total);
 
-        // Calculate Exam Chart Data
         const chartExamData = Object.keys(examStats).map(e => ({
             name: e,
             passed: examStats[e].passed,
@@ -201,7 +237,6 @@ export default function AdminReportsPage() {
             total: examStats[e].total
         })).sort((a, b) => b.total - a.total);
 
-        // Calculate Top Performer Per Rank
         const topPerformerPerRank = Object.keys(rankStats)
             .map(rName => {
                 const candidatesForRank = rankStats[rName].topPerformers;
@@ -209,13 +244,13 @@ export default function AdminReportsPage() {
                 if (candidatesForRank.length > 0) {
                     return {
                         rankName: rName,
-                        ...candidatesForRank[0] // take highest
+                        ...candidatesForRank[0]
                     };
                 }
                 return null;
             })
             .filter(Boolean)
-            .sort((a: any, b: any) => getRankWeight(a.rankName) - getRankWeight(b.rankName)); // Ascending hierarchical order
+            .sort((a: any, b: any) => getRankWeight(a.rankName) - getRankWeight(b.rankName));
 
         const churchLeaderboard = Object.entries(churchStats)
             .map(([name, stats]) => ({
@@ -248,51 +283,34 @@ export default function AdminReportsPage() {
             chartExamData
         };
     }, [rawData]);
-    // Set of RA Numbers that are rank valedictorians
+
     const valedictorianRaNumbers = useMemo(() => {
         if (!insights?.topPerformerPerRank) return new Set<string>();
-        return new Set(insights.topPerformerPerRank.map((p: any) => p.raNumber));
+        return new Set(insights.topPerformerPerRank.map((p: any) => `${p.rankName}-${p.raNumber}`));
     }, [insights]);
 
     return (
         <ProtectedRoute allowedRoles={['SYSTEM_ADMIN', 'ASSOCIATION_OFFICER']}>
-
-            {/* ============================================================
-                PRINT CSS — overrides dashboard layout overflow clipping
-            ============================================================ */}
             <style jsx global>{`
                 @media print {
                     @page { size: A4 portrait; margin: 1.2cm 1cm; }
-
-                    /* Override the dashboard layout overflow-hidden / overflow-y-auto */
                     html, body { height: auto !important; overflow: visible !important; background: white !important; color: #1e293b !important; }
-                    body > div, body > div > div,
-                    [class*="flex"][class*="h-screen"],
-                    [class*="overflow-hidden"],
-                    [class*="overflow-y-auto"] {
-                        height: auto !important; overflow: visible !important; max-height: none !important;
-                    }
+                    body > div, body > div > div, [class*="flex"][class*="h-screen"], [class*="overflow-hidden"], [class*="overflow-y-auto"] { height: auto !important; overflow: visible !important; max-height: none !important; }
                     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                     aside, header, nav, [role="navigation"], .no-print { display: none !important; }
                     .rpt-letterhead { display: flex !important; }
                     .rpt-church { page-break-before: always; break-before: page; }
                     .rpt-church-first { page-break-before: auto; break-before: auto; }
                     .rpt-rank { page-break-inside: avoid; break-inside: avoid; }
-                    /* Keep heading with its table — no orphaned titles */
                     .rpt-exam-heading { page-break-after: avoid; break-after: avoid; }
                     h2, h3, h4 { page-break-after: avoid; break-after: avoid; }
-                    /* Widow / orphan control on table content */
                     tr { page-break-inside: avoid; break-inside: avoid; }
                     tbody { orphans: 3; widows: 3; }
                     * { box-shadow: none !important; border-radius: 0 !important; }
                 }
             `}</style>
 
-            {/* ============================================================
-                PRINT LETTERHEAD (screen: hidden, print: visible)
-            ============================================================ */}
             <div className="rpt-letterhead" style={{ display: 'none', alignItems: 'center', gap: '16px', borderBottom: '4px solid #1e3a8a', paddingBottom: '12px', marginBottom: '20px', width: '100%' }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={raLogo.src} alt="RA Logo" style={{ width: 68, height: 68, objectFit: 'contain' }} />
                 <div style={{ flex: 1 }}>
                     <p style={{ fontSize: '15px', fontWeight: 900, color: '#1e3a8a', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Royal Ambassadors — OGBA Association</p>
@@ -304,12 +322,7 @@ export default function AdminReportsPage() {
                 </div>
             </div>
 
-            {/* ============================================================
-                SCREEN PAGE
-            ============================================================ */}
             <div className="space-y-6 max-w-6xl mx-auto pb-12">
-
-                {/* Screen header — hidden in print */}
                 <div className="no-print bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 border-b border-slate-100 dark:border-slate-800">
                         <div>
@@ -326,21 +339,27 @@ export default function AdminReportsPage() {
                                 </div>
                             )}
                             {activeTab !== 'insights' && (
-                                <button onClick={() => handlePrint(null)}
-                                    className="no-print flex items-center justify-center gap-2 bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-blue-800 transition-colors shadow-md shadow-blue-700/20 whitespace-nowrap">
-                                    <Printer className="w-4 h-4" /> Print {activeTab === 'church' ? 'All Churches' : 'All Ranks'}
-                                </button>
+                                <>
+                                    <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl no-print">
+                                        <button onClick={() => setReportMode('full')} className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-tighter rounded-lg transition-all ${reportMode === 'full' ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600' : 'text-slate-500'}`}>Full Assessment</button>
+                                        <button onClick={() => setReportMode('exam')} className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-tighter rounded-lg transition-all ${reportMode === 'exam' ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600' : 'text-slate-500'}`}>Exam Only</button>
+                                    </div>
+                                    <button onClick={handleExportExcel} className="no-print flex items-center justify-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-700/20 whitespace-nowrap">
+                                        <Download className="w-4 h-4" /> Export Excel
+                                    </button>
+                                    <button onClick={() => handlePrint(null)} className="no-print flex items-center justify-center gap-2 bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-blue-800 transition-colors shadow-md shadow-blue-700/20 whitespace-nowrap">
+                                        <Printer className="w-4 h-4" /> Print Reports
+                                    </button>
+                                </>
                             )}
                             {activeTab === 'insights' && (
-                                <button onClick={() => window.print()}
-                                    className="no-print flex items-center justify-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-900 transition-colors shadow-md shadow-black/10 whitespace-nowrap">
+                                <button onClick={() => window.print()} className="no-print flex items-center justify-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-900 transition-colors shadow-md shadow-black/10 whitespace-nowrap">
                                     <Printer className="w-4 h-4" /> Print Dashboard
                                 </button>
                             )}
                         </div>
                     </div>
                     
-                    {/* Tabs */}
                     <div className="flex px-4 pt-4 gap-2 overflow-x-auto bg-slate-50/50 dark:bg-slate-900/50">
                         <button onClick={() => { setActiveTab('church'); setSearchTerm(''); }}
                             className={`flex items-center gap-2 px-5 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${activeTab === 'church' ? 'border-blue-600 text-blue-700 dark:text-blue-400 bg-white dark:bg-slate-800/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>
@@ -374,23 +393,16 @@ export default function AdminReportsPage() {
                                 const showChurch = !printTarget || printTarget.startsWith(churchId);
 
                                 return (
-                                    <div key={churchName}
-                                        className={`bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm ${ci === 0 ? 'rpt-church-first' : 'rpt-church'} ${!showChurch ? 'no-print' : ''}`}>
-
-                                        {/* Church header */}
+                                    <div key={churchName} className={`bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm ${ci === 0 ? 'rpt-church-first' : 'rpt-church'} ${!showChurch ? 'no-print' : ''}`}>
                                         <div style={{ background: '#1e40af', color: 'white', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                                 <Building2 className="no-print w-5 h-5" style={{ opacity: 0.8 }} />
                                                 <div>
                                                     <h2 style={{ fontWeight: 900, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>{churchName}</h2>
-                                                    <p className="no-print" style={{ fontSize: 11, opacity: 0.75, margin: 0 }}>
-                                                        {Object.keys(report[churchName]).length} exam(s)
-                                                    </p>
+                                                    <p className="no-print" style={{ fontSize: 11, opacity: 0.75, margin: 0 }}>{Object.keys(report[churchName]).length} exam(s)</p>
                                                 </div>
                                             </div>
-                                            <button onClick={() => handlePrint(churchId)}
-                                                className="no-print text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
-                                                style={{ background: 'rgba(255,255,255,0.2)', color: 'white' }}>
+                                            <button onClick={() => handlePrint(churchId)} className="no-print text-xs font-bold px-3 py-1.5 rounded-lg transition-colors" style={{ background: 'rgba(255,255,255,0.2)', color: 'white' }}>
                                                 <Printer className="w-3.5 h-3.5 inline mr-1" /> Print Church
                                             </button>
                                         </div>
@@ -402,11 +414,9 @@ export default function AdminReportsPage() {
 
                                                 return (
                                                     <div key={examTitle} className={!showExam ? 'no-print' : ''}>
-                                                        {/* Exam title */}
                                                         <div className="rpt-exam-heading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: '5px solid #2563eb', paddingLeft: 12, marginBottom: 16 }}>
                                                             <h3 style={{ fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#1e293b', margin: 0 }}>{examTitle}</h3>
-                                                            <button onClick={() => handlePrint(examId)}
-                                                                className="no-print text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-colors">
+                                                            <button onClick={() => handlePrint(examId)} className="no-print text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-colors">
                                                                 <Printer className="w-3.5 h-3.5 inline mr-1" /> Print Exam
                                                             </button>
                                                         </div>
@@ -420,14 +430,10 @@ export default function AdminReportsPage() {
 
                                                                 return (
                                                                     <div key={rankName} className={`rpt-rank ${!showRank ? 'no-print' : ''}`}>
-                                                                        {/* Rank stats bar */}
                                                                         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: '#f8fafc', border: '1px solid #e2e8f0', padding: '10px 14px', marginBottom: 6 }}>
                                                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                                                 <Award className="no-print w-4 h-4 text-amber-500" />
                                                                                 <span style={{ fontWeight: 900, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#1e293b' }}>{displayRank}</span>
-                                                                                <button onClick={() => handlePrint(rankId)} className="no-print ml-1 p-1 rounded text-slate-400 hover:bg-slate-200 transition-colors">
-                                                                                    <Printer className="w-3.5 h-3.5" />
-                                                                                </button>
                                                                             </div>
                                                                             <div style={{ display: 'flex', gap: 16, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                                                                                 <span style={{ color: '#64748b' }}>Total: <strong style={{ color: '#1e293b' }}>{group.stats.total}</strong></span>
@@ -437,7 +443,6 @@ export default function AdminReportsPage() {
                                                                             </div>
                                                                         </div>
 
-                                                                        {/* Results table */}
                                                                         <div className="overflow-x-auto" style={{ border: '1px solid #e2e8f0' }}>
                                                                             <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse', textAlign: 'left' }}>
                                                                                 <thead>
@@ -445,7 +450,16 @@ export default function AdminReportsPage() {
                                                                                         <th style={{ padding: '8px 10px', fontWeight: 700 }}>#</th>
                                                                                         <th style={{ padding: '8px 10px', fontWeight: 700 }}>RA Number</th>
                                                                                         <th style={{ padding: '8px 10px', fontWeight: 700 }}>Full Name</th>
-                                                                                        <th style={{ padding: '8px 10px', fontWeight: 700, textAlign: 'center' }}>Score</th>
+                                                                                        {reportMode === 'full' ? (
+                                                                                            <>
+                                                                                                <th style={{ padding: '8px 10px', fontWeight: 700, textAlign: 'center' }}>Exam (80%)</th>
+                                                                                                <th style={{ padding: '8px 10px', fontWeight: 700, textAlign: 'center' }}>LTC (10)</th>
+                                                                                                <th style={{ padding: '8px 10px', fontWeight: 700, textAlign: 'center' }}>Hiking (10)</th>
+                                                                                                <th style={{ padding: '8px 10px', fontWeight: 700, textAlign: 'center' }}>Total (100%)</th>
+                                                                                            </>
+                                                                                        ) : (
+                                                                                            <th style={{ padding: '8px 10px', fontWeight: 700, textAlign: 'center' }}>Exam Score (%)</th>
+                                                                                        )}
                                                                                         <th style={{ padding: '8px 10px', fontWeight: 700, textAlign: 'center' }}>Result</th>
                                                                                         <th className="no-print" style={{ padding: '8px 10px', fontWeight: 700, textAlign: 'right' }}>Review</th>
                                                                                     </tr>
@@ -464,9 +478,16 @@ export default function AdminReportsPage() {
                                                                                                         <span title="Valedictorian for this Rank"><Award className="w-3.5 h-3.5 text-amber-500 inline ml-1.5 align-text-bottom no-print" /></span>
                                                                                                     )}
                                                                                                 </td>
-                                                                                                <td style={{ padding: '7px 10px', textAlign: 'center', fontWeight: 900, fontSize: 13, color: passed ? '#059669' : failed ? '#dc2626' : '#94a3b8' }}>
-                                                                                                    {member.score !== null ? `${member.score}%` : '—'}
-                                                                                                </td>
+                                                                                                {reportMode === 'full' ? (
+                                                                                                    <>
+                                                                                                        <td style={{ padding: '7px 10px', textAlign: 'center', fontWeight: 600, color: '#64748b' }}>{member.examScore !== undefined ? `${Math.round(member.examScore * 0.8)}` : '—'}</td>
+                                                                                                        <td style={{ padding: '7px 10px', textAlign: 'center', fontWeight: 600, color: '#64748b' }}>{member.ltcScore ?? 0}</td>
+                                                                                                        <td style={{ padding: '7px 10px', textAlign: 'center', fontWeight: 600, color: '#64748b' }}>{member.hikingScore ?? 0}</td>
+                                                                                                        <td style={{ padding: '7px 10px', textAlign: 'center', fontWeight: 900, fontSize: 13, color: passed ? '#059669' : failed ? '#dc2626' : '#94a3b8' }}>{member.score !== null ? `${member.score}%` : '—'}</td>
+                                                                                                    </>
+                                                                                                ) : (
+                                                                                                    <td style={{ padding: '7px 10px', textAlign: 'center', fontWeight: 900, fontSize: 13, color: '#1e293b' }}>{member.examScore !== undefined ? `${member.examScore}%` : `${member.score}%`}</td>
+                                                                                                )}
                                                                                                 <td style={{ padding: '7px 10px', textAlign: 'center' }}>
                                                                                                     {member.score !== null ? (
                                                                                                         <span style={{
@@ -493,7 +514,7 @@ export default function AdminReportsPage() {
                                                                                 <tfoot>
                                                                                     <tr style={{ background: '#f1f5f9', borderTop: '2px solid #cbd5e1' }}>
                                                                                         <td colSpan={3} style={{ padding: '6px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Summary</td>
-                                                                                        <td style={{ padding: '6px 10px', textAlign: 'center', fontSize: 11, fontWeight: 900, color: '#1d4ed8' }}>{group.stats.avgScore}% avg</td>
+                                                                                        <td colSpan={reportMode === 'full' ? 4 : 1} style={{ padding: '6px 10px', textAlign: 'center', fontSize: 11, fontWeight: 900, color: '#1d4ed8' }}>{group.stats.avgScore}% avg</td>
                                                                                         <td style={{ padding: '6px 10px', textAlign: 'center', fontSize: 11, fontWeight: 900 }}>
                                                                                             <span style={{ color: '#065f46' }}>{group.stats.passed} passed</span> / <span style={{ color: '#991b1b' }}>{group.stats.failed} failed</span>
                                                                                         </td>
@@ -584,7 +605,16 @@ export default function AdminReportsPage() {
                                                                         <th style={{ padding: '8px 10px', fontWeight: 700 }}>RA Number</th>
                                                                         <th style={{ padding: '8px 10px', fontWeight: 700 }}>Full Name</th>
                                                                         <th style={{ padding: '8px 10px', fontWeight: 700 }}>Church</th>
-                                                                        <th style={{ padding: '8px 10px', fontWeight: 700, textAlign: 'center' }}>Score</th>
+                                                                        {reportMode === 'full' ? (
+                                                                            <>
+                                                                                <th style={{ padding: '8px 10px', fontWeight: 700, textAlign: 'center' }}>Exam (80)</th>
+                                                                                <th style={{ padding: '8px 10px', fontWeight: 700, textAlign: 'center' }}>LTC (10)</th>
+                                                                                <th style={{ padding: '8px 10px', fontWeight: 700, textAlign: 'center' }}>Hiking (10)</th>
+                                                                                <th style={{ padding: '8px 10px', fontWeight: 700, textAlign: 'center' }}>Total</th>
+                                                                            </>
+                                                                        ) : (
+                                                                            <th style={{ padding: '8px 10px', fontWeight: 700, textAlign: 'center' }}>Exam Score (%)</th>
+                                                                        )}
                                                                         <th style={{ padding: '8px 10px', fontWeight: 700, textAlign: 'center' }}>Result</th>
                                                                         <th className="no-print" style={{ padding: '8px 10px', fontWeight: 700, textAlign: 'right' }}>Review</th>
                                                                     </tr>
@@ -604,9 +634,26 @@ export default function AdminReportsPage() {
                                                                                     )}
                                                                                 </td>
                                                                                 <td style={{ padding: '7px 10px', fontSize: 11, color: '#475569', maxWidth: 180 }} className="truncate" title={member.church}>{member.church}</td>
-                                                                                <td style={{ padding: '7px 10px', textAlign: 'center', fontWeight: 900, fontSize: 13, color: passed ? '#059669' : failed ? '#dc2626' : '#94a3b8' }}>
-                                                                                    {member.score !== null ? `${member.score}%` : '—'}
-                                                                                </td>
+                                                                                {reportMode === 'full' ? (
+                                                                                    <>
+                                                                                        <td style={{ padding: '7px 10px', textAlign: 'center', fontWeight: 600, color: '#64748b' }}>
+                                                                                            {member.examScore !== undefined ? `${Math.round(member.examScore * 0.8)}` : '—'}
+                                                                                        </td>
+                                                                                        <td style={{ padding: '7px 10px', textAlign: 'center', fontWeight: 600, color: '#64748b' }}>
+                                                                                            {member.ltcScore ?? 0}
+                                                                                        </td>
+                                                                                        <td style={{ padding: '7px 10px', textAlign: 'center', fontWeight: 600, color: '#64748b' }}>
+                                                                                            {member.hikingScore ?? 0}
+                                                                                        </td>
+                                                                                        <td style={{ padding: '7px 10px', textAlign: 'center', fontWeight: 900, fontSize: 13, color: passed ? '#059669' : failed ? '#dc2626' : '#94a3b8' }}>
+                                                                                            {member.score !== null ? `${member.score}%` : '—'}
+                                                                                        </td>
+                                                                                    </>
+                                                                                ) : (
+                                                                                    <td style={{ padding: '7px 10px', textAlign: 'center', fontWeight: 900, fontSize: 13, color: '#1e293b' }}>
+                                                                                        {member.examScore !== undefined ? `${member.examScore}%` : `${member.score}%`}
+                                                                                    </td>
+                                                                                )}
                                                                                 <td style={{ padding: '7px 10px', textAlign: 'center' }}>
                                                                                     {member.score !== null ? (
                                                                                         <span style={{
@@ -630,6 +677,16 @@ export default function AdminReportsPage() {
                                                                         );
                                                                     })}
                                                                 </tbody>
+                                                                <tfoot>
+                                                                    <tr style={{ background: '#f1f5f9', borderTop: '2px solid #cbd5e1' }}>
+                                                                        <td colSpan={4} style={{ padding: '6px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Summary</td>
+                                                                        <td colSpan={reportMode === 'full' ? 4 : 1} style={{ padding: '6px 10px', textAlign: 'center', fontSize: 11, fontWeight: 900, color: '#1d4ed8' }}>{group.stats.avgScore}% avg</td>
+                                                                        <td style={{ padding: '6px 10px', textAlign: 'center', fontSize: 11, fontWeight: 900 }}>
+                                                                            <span style={{ color: '#065f46' }}>{group.stats.passed} passed</span> / <span style={{ color: '#991b1b' }}>{group.stats.failed} failed</span>
+                                                                        </td>
+                                                                        <td className="no-print" />
+                                                                    </tr>
+                                                                </tfoot>
                                                             </table>
                                                         </div>
                                                     </div>

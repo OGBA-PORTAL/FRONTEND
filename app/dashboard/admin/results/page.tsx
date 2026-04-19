@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { ExamAttempt } from '@/lib/types';
 import { useState } from 'react';
-import { BarChart3, Search, Filter, Loader2, CheckCircle, XCircle, Clock, Trophy, Eye, Trash2, X } from 'lucide-react';
+import { BarChart3, Search, Filter, Loader2, CheckCircle, XCircle, Clock, Trophy, Eye, Trash2, X, ShieldAlert, ShieldCheck, ClipboardCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function AdminResultsPage() {
@@ -38,6 +38,50 @@ export default function AdminResultsPage() {
     });
 
     // Mutations
+    const withholdMutation = useMutation({
+        mutationFn: async ({ id, isWithheld }: { id: string; isWithheld: boolean }) => {
+            await api.patch(`/results/${id}/withhold`, { isWithheld });
+        },
+        onSuccess: (_, variables) => {
+            toast.success(variables.isWithheld ? 'Result withheld' : 'Result released');
+            queryClient.invalidateQueries({ queryKey: ['admin-results'] });
+        },
+        onError: (err: any) => {
+            const msg = err.response?.data?.message || 'Failed to update withholding status';
+            toast.error(msg);
+        }
+    });
+
+    const bulkAssessmentMutation = useMutation({
+        mutationFn: async (updates: any[]) => {
+            await api.patch('/results/bulk-assessment', { updates });
+        },
+        onSuccess: () => {
+            toast.success('All assessments updated successfully');
+            queryClient.invalidateQueries({ queryKey: ['admin-results'] });
+            setBulkModalOpen(false);
+        },
+        onError: (err: any) => {
+            const msg = err.response?.data?.message || 'Failed to update bulk assessments';
+            toast.error(msg);
+        }
+    });
+
+    const assessmentMutation = useMutation({
+        mutationFn: async ({ id, ltcScore, hikingScore }: { id: string; ltcScore: number; hikingScore: number }) => {
+            await api.patch(`/results/${id}/assessment`, { ltcScore, hikingScore });
+        },
+        onSuccess: () => {
+            toast.success('Assessment scores updated');
+            queryClient.invalidateQueries({ queryKey: ['admin-results'] });
+            setAssessmentModalOpen(false);
+        },
+        onError: (err: any) => {
+            const msg = err.response?.data?.message || 'Failed to update assessment';
+            toast.error(msg);
+        }
+    });
+
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
             await api.delete(`/results/${id}`);
@@ -62,6 +106,14 @@ export default function AdminResultsPage() {
             deleteMutation.mutate(confirmDeleteId);
         }
     };
+
+    const [assessmentModalOpen, setAssessmentModalOpen] = useState(false);
+    const [bulkModalOpen, setBulkModalOpen] = useState(false);
+    const [bulkScores, setBulkScores] = useState<Record<string, { ltc: number; hiking: number }>>({});
+    const [selectedAttempt, setSelectedAttempt] = useState<ExamAttempt | null>(null);
+
+    // Filter results that have been submitted (ready for assessment)
+    const submittableResults = attempts.filter(a => a.submittedAt || a.completedAt);
 
     const handleReview = (id: string) => {
         setSelectedAttemptId(id);
@@ -231,6 +283,14 @@ export default function AdminResultsPage() {
                             placeholder="Search name or exam..."
                             className="w-full pl-9 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 dark:text-slate-200 dark:placeholder-slate-500 transition-all shadow-sm" />
                     </div>
+                    {submittableResults.length > 0 && (
+                        <button
+                            onClick={() => setBulkModalOpen(true)}
+                            className="flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-600/20 transition-all whitespace-nowrap"
+                        >
+                            <ClipboardCheck className="w-4 h-4" /> Bulk Assessment Tool
+                        </button>
+                    )}
                 </div>
 
                 {/* Table */}
@@ -253,7 +313,7 @@ export default function AdminResultsPage() {
                                     <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
                                         <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Member</th>
                                         <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Exam</th>
-                                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Score</th>
+                                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Grade (%)</th>
                                         <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Result</th>
                                         <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Date</th>
                                         <th className="text-right px-5 py-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Actions</th>
@@ -301,9 +361,9 @@ export default function AdminResultsPage() {
                                                 </td>
                                                 <td className="px-5 py-4">
                                                     {attempt.submittedAt ? (
-                                                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold ${isPassed ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'}`}>
-                                                            {isPassed ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                                                            {isPassed ? 'Passed' : 'Failed'}
+                                                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold ${attempt.isWithheld ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' : (isPassed ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400')}`}>
+                                                            {attempt.isWithheld ? <ShieldAlert className="w-3 h-3" /> : (isPassed ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />)}
+                                                            {attempt.isWithheld ? 'Withheld' : (isPassed ? 'Passed' : 'Failed')}
                                                         </span>
                                                     ) : (
                                                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400">
@@ -327,6 +387,29 @@ export default function AdminResultsPage() {
                                                             title="Review Answers"
                                                         >
                                                             <Eye className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedAttempt(attempt);
+                                                                setAssessmentModalOpen(true);
+                                                            }}
+                                                            disabled={!attempt.submittedAt}
+                                                            className={`p-2 rounded-lg transition-colors ${(Number(attempt.ltcScore) > 0 || Number(attempt.hikingScore) > 0) ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                                                            title="Manage Assessment (LTC/Hiking)"
+                                                        >
+                                                            <ClipboardCheck className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => withholdMutation.mutate({ id: attempt.id, isWithheld: !attempt.isWithheld })}
+                                                            disabled={!attempt.submittedAt || withholdMutation.isPending}
+                                                            className={`p-2 rounded-lg transition-colors ${attempt.isWithheld ? 'text-amber-600 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600'}`}
+                                                            title={attempt.isWithheld ? "Release Result" : "Withhold Result"}
+                                                        >
+                                                            {withholdMutation.isPending && withholdMutation.variables?.id === attempt.id ? (
+                                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                            ) : (
+                                                                attempt.isWithheld ? <ShieldCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />
+                                                            )}
                                                         </button>
                                                         <button
                                                             onClick={() => handleDelete(attempt.id)}
@@ -500,6 +583,197 @@ export default function AdminResultsPage() {
                     </div>
                 )}
             </div>
+            {/* Assessment Modal */}
+            {assessmentModalOpen && selectedAttempt && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+                                    <ClipboardCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-800 dark:text-slate-100">Adjust Assessment</h3>
+                                    <p className="text-xs text-slate-500">{selectedAttempt.users?.firstName} {selectedAttempt.users?.lastName}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setAssessmentModalOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                                <X className="w-5 h-5 text-slate-400" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={(e) => {
+                            e.preventDefault();
+                            const formData = new FormData(e.currentTarget);
+                            assessmentMutation.mutate({
+                                id: selectedAttempt.id,
+                                ltcScore: Number(formData.get('ltcScore')),
+                                hikingScore: Number(formData.get('hikingScore'))
+                            });
+                        }} className="p-6 space-y-6">
+                            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-500">Raw Exam Percentage</span>
+                                    <span className="font-bold text-slate-700 dark:text-slate-200">{selectedAttempt.examScore || selectedAttempt.score}%</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-500">Exam Core (80% Weight)</span>
+                                    <span className="font-bold text-blue-600 dark:text-blue-400">{Math.round((selectedAttempt.examScore || selectedAttempt.score || 0) * 0.8)} pts</span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex justify-between">
+                                        LTC Assessment (Max 10)
+                                        <span className="text-blue-600">points</span>
+                                    </label>
+                                    <input
+                                        name="ltcScore"
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        max="10"
+                                        defaultValue={selectedAttempt.ltcScore || 0}
+                                        required
+                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex justify-between">
+                                        Hiking Assessment (Max 10)
+                                        <span className="text-blue-600">points</span>
+                                    </label>
+                                    <input
+                                        name="hikingScore"
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        max="10"
+                                        defaultValue={selectedAttempt.hikingScore || 0}
+                                        required
+                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                    />
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={assessmentMutation.isPending}
+                                className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-2xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2"
+                            >
+                                {assessmentMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Save Final Assessment'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+            {/* Bulk Assessment Modal */}
+            {bulkModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-4xl max-h-[90vh] shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+                            <div>
+                                <h3 className="font-black text-slate-800 dark:text-slate-100 text-lg flex items-center gap-2">
+                                    <ClipboardCheck className="w-6 h-6 text-indigo-600" /> Bulk Assessment Entry
+                                </h3>
+                                <p className="text-xs text-slate-500 mt-1">Easily update LTC and Hiking scores for all participants on one page.</p>
+                            </div>
+                            <button onClick={() => setBulkModalOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-slate-400">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-0">
+                            <table className="w-full text-sm text-left border-collapse">
+                                <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10 border-b border-slate-200 dark:border-slate-700">
+                                    <tr>
+                                        <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Candidate Details</th>
+                                        <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-[10px] text-center">Exam Core (80%)</th>
+                                        <th className="px-6 py-4 font-bold text-blue-600 uppercase tracking-wider text-[10px] text-center">LTC (10 pts)</th>
+                                        <th className="px-6 py-4 font-bold text-emerald-600 uppercase tracking-wider text-[10px] text-center">Hiking (10 pts)</th>
+                                        <th className="px-6 py-4 font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-[10px] text-center">New Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                    {submittableResults.map((attempt) => {
+                                        const examCore = Math.round((attempt.examScore || attempt.score || 0) * 0.8);
+                                        const currentLtc = bulkScores[attempt.id]?.ltc ?? (attempt.ltcScore || 0);
+                                        const currentHiking = bulkScores[attempt.id]?.hiking ?? (attempt.hikingScore || 0);
+                                        const newTotal = Math.round(examCore + currentLtc + currentHiking);
+
+                                        return (
+                                            <tr key={attempt.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <p className="font-black text-slate-800 dark:text-slate-200">{attempt.users?.firstName} {attempt.users?.lastName}</p>
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{attempt.exams?.title}</p>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <span className="font-black text-slate-600 dark:text-slate-400">{examCore}</span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <input
+                                                        type="number" step="0.1" min="0" max="10"
+                                                        value={currentLtc}
+                                                        onChange={(e) => setBulkScores(prev => ({
+                                                            ...prev,
+                                                            [attempt.id]: { ...(prev[attempt.id] || { ltc: attempt.ltcScore || 0, hiking: attempt.hikingScore || 0 }), ltc: Number(e.target.value) }
+                                                        }))}
+                                                        className="w-20 mx-auto block px-3 py-1.5 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg text-center font-bold text-blue-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                                                    />
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <input
+                                                        type="number" step="0.1" min="0" max="10"
+                                                        value={currentHiking}
+                                                        onChange={(e) => setBulkScores(prev => ({
+                                                            ...prev,
+                                                            [attempt.id]: { ...(prev[attempt.id] || { ltc: attempt.ltcScore || 0, hiking: attempt.hikingScore || 0 }), hiking: Number(e.target.value) }
+                                                        }))}
+                                                        className="w-20 mx-auto block px-3 py-1.5 bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800 rounded-lg text-center font-bold text-emerald-700 focus:ring-2 focus:ring-emerald-500 outline-none"
+                                                    />
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <div className="flex flex-col items-center">
+                                                        <span className={`font-black text-lg ${newTotal >= (attempt.exams?.passMark || 50) ? 'text-emerald-600' : 'text-red-500'}`}>
+                                                            {newTotal}%
+                                                        </span>
+                                                        <span className="text-[9px] font-bold uppercase tracking-tighter opacity-50">Estimated</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                    {submittableResults.length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} className="py-20 text-center text-slate-400 font-medium">No results ready for assessment.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex justify-end gap-3">
+                            <button onClick={() => setBulkModalOpen(false)} className="px-6 py-3 font-bold text-slate-500 hover:text-slate-700 transition-colors">Cancel</button>
+                            <button
+                                onClick={() => {
+                                    const updates = submittableResults.map(a => ({
+                                        id: a.id,
+                                        ltcScore: bulkScores[a.id]?.ltc ?? (a.ltcScore || 0),
+                                        hikingScore: bulkScores[a.id]?.hiking ?? (a.hikingScore || 0)
+                                    }));
+                                    bulkAssessmentMutation.mutate(updates);
+                                }}
+                                disabled={bulkAssessmentMutation.isPending || submittableResults.length === 0}
+                                className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-black rounded-2xl shadow-lg shadow-indigo-600/20 transition-all flex items-center gap-2"
+                            >
+                                {bulkAssessmentMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Save All Assessments'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </ProtectedRoute>
     );
 }

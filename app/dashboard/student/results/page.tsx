@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { ExamAttempt } from '@/lib/types';
 import { useState } from 'react';
-import { BarChart3, CheckCircle, XCircle, Clock, Trophy, Loader2, Eye, X } from 'lucide-react';
+import { BarChart3, CheckCircle, XCircle, Clock, Trophy, Loader2, Eye, X, ShieldAlert } from 'lucide-react';
 
 export default function StudentResultsPage() {
     const { data: attempts = [], isLoading } = useQuery<ExamAttempt[]>({
@@ -57,7 +57,8 @@ export default function StudentResultsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {[
                         { label: 'Exams Taken', value: completed.length, icon: BarChart3, color: 'from-blue-600 to-blue-800' },
-                        { label: 'Exams Pending Review', value: pendingReview.length, icon: Clock, color: 'from-slate-600 to-slate-800' },
+                        { label: 'Pending Review', value: pendingReview.length, icon: Clock, color: 'from-slate-600 to-slate-800' },
+                        { label: 'Withheld', value: completed.filter(a => a.isWithheld).length, icon: ShieldAlert, color: 'from-amber-600 to-amber-800' },
                     ].map(({ label, value, icon: Icon, color }) => (
                         <div key={label} className={`rounded-2xl p-4 text-white bg-gradient-to-br ${color} relative overflow-hidden`}
                             style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.12)' }}>
@@ -115,7 +116,12 @@ export default function StudentResultsPage() {
                                         </div>
                                     </div>
                                     <div className="text-right flex-shrink-0">
-                                        {attempt.exams?.resultsReleased ? (
+                                        {attempt.isWithheld ? (
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                                <ShieldAlert className="w-3 h-3" />
+                                                Withheld
+                                            </span>
+                                        ) : attempt.exams?.resultsReleased ? (
                                             <div className="flex flex-col items-end gap-1">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-xl font-bold text-slate-800 dark:text-slate-200">

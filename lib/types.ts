@@ -69,6 +69,10 @@ export interface ExamAttempt {
     submittedAt?: string;
     completedAt?: string;
     passed?: boolean | null;
+    isWithheld?: boolean;
+    examScore?: number;
+    ltcScore?: number;
+    hikingScore?: number;
     statusDisplay?: string;
     exams?: Exam;
     users?: {
