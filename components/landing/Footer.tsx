@@ -21,10 +21,10 @@ export const Footer = () => {
                     <div className="md:col-span-5 lg:col-span-4 flex flex-col gap-6">
                         <div className="flex items-center gap-3">
                             <div className="relative w-12 h-12 rounded-full overflow-hidden border border-yellow-400/30">
-                                <Image src={logo} alt="RA OGBA Logo" fill className="object-cover" />
+                                <Image src={logo} alt="RA OBBA Logo" fill className="object-cover" />
                             </div>
                             <h2 className="text-2xl font-bold tracking-tight text-white">
-                                RA <span className="text-yellow-400">OGBA</span>
+                                RA <span className="text-yellow-400">OBBA</span>
                             </h2>
                         </div>
                         <p className="text-slate-400 font-light leading-relaxed max-w-sm">
