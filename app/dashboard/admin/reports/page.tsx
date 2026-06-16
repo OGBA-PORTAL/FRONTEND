@@ -96,7 +96,7 @@ export default function AdminReportsPage() {
         const ws = XLSX.utils.json_to_sheet(dataToExport);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Reports");
-        XLSX.writeFile(wb, `OGBA_Report_${reportMode}_${new Date().toISOString().split('T')[0]}.xlsx`);
+        XLSX.writeFile(wb, `OBBA_Report_${reportMode}_${new Date().toISOString().split('T')[0]}.xlsx`);
         toast.success('Excel file downloaded');
     };
 
@@ -313,7 +313,7 @@ export default function AdminReportsPage() {
             <div className="rpt-letterhead" style={{ display: 'none', alignItems: 'center', gap: '16px', borderBottom: '4px solid #1e3a8a', paddingBottom: '12px', marginBottom: '20px', width: '100%' }}>
                 <img src={raLogo.src} alt="RA Logo" style={{ width: 68, height: 68, objectFit: 'contain' }} />
                 <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: '15px', fontWeight: 900, color: '#1e3a8a', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Royal Ambassadors — OGBA Association</p>
+                    <p style={{ fontSize: '15px', fontWeight: 900, color: '#1e3a8a', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Royal Ambassadors — OBBA Association</p>
                     <p style={{ fontSize: '11px', color: '#475569', marginTop: '2px', margin: 0 }}>Official Exam Performance Report</p>
                 </div>
                 <div style={{ textAlign: 'right', fontSize: '10px', color: '#64748b' }}>
@@ -534,7 +534,7 @@ export default function AdminReportsPage() {
 
                                         {/* Print footer per church */}
                                         <div style={{ display: 'none', borderTop: '1px solid #cbd5e1', margin: '0 16px 12px', paddingTop: 6 }} className="rpt-footer">
-                                            <p style={{ fontSize: 9, color: '#94a3b8', textAlign: 'right', margin: 0 }}>Royal Ambassadors OGBA Association — Confidential Exam Report — {printDate}</p>
+                                            <p style={{ fontSize: 9, color: '#94a3b8', textAlign: 'right', margin: 0 }}>Royal Ambassadors OBBA Association — Confidential Exam Report — {printDate}</p>
                                         </div>
                                     </div>
                                 );
@@ -696,7 +696,7 @@ export default function AdminReportsPage() {
 
                                         {/* Print footer */}
                                         <div style={{ display: 'none', borderTop: '1px solid #cbd5e1', margin: '0 16px 12px', paddingTop: 6 }} className="rpt-footer">
-                                            <p style={{ fontSize: 9, color: '#94a3b8', textAlign: 'right', margin: 0 }}>Royal Ambassadors OGBA Association — Rank Performance Report — {printDate}</p>
+                                            <p style={{ fontSize: 9, color: '#94a3b8', textAlign: 'right', margin: 0 }}>Royal Ambassadors OBBA Association — Rank Performance Report — {printDate}</p>
                                         </div>
                                     </div>
                                 );
@@ -712,7 +712,7 @@ export default function AdminReportsPage() {
                             {/* Dashboard Print Header (only shows in print) */}
                             <div className="hidden print:block mb-8 border-b-2 border-slate-800 pb-4">
                                 <h1 className="text-3xl font-black text-slate-800 uppercase tracking-tight">Executive Analytics Dashboard</h1>
-                                <p className="text-slate-500 font-medium">Royal Ambassadors OGBA Association — Generated {printDate}</p>
+                                <p className="text-slate-500 font-medium">Royal Ambassadors OBBA Association — Generated {printDate}</p>
                             </div>
 
                             {/* Top Stats Row */}

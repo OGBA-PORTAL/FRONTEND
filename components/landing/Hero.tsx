@@ -43,7 +43,7 @@ export const Hero = () => {
                         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                     >
                         <span className="inline-block py-1.5 px-4 rounded-full bg-white/10 border border-white/20 text-yellow-400 text-sm font-bold tracking-wider uppercase mb-6 shadow-xl backdrop-blur-md">
-                            Ogbomoso Goshen Baptist Association
+                            Ogbomoso Berea Baptist Association
                         </span>
                         <h1 className="text-5xl md:text-7xl lg:text-8xl font-black leading-[1.1] tracking-tight text-white mb-6">
                             Raising Leaders, <br className="hidden md:block" />

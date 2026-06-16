@@ -163,7 +163,7 @@ export default function LoginPage() {
                 id="raNumber"
                 type="text"
                 {...register('raNumber')}
-                placeholder="RA/OGBA/GBC/2026/0001"
+                placeholder="RA/OBBA/GBC/2026/0001"
                 className={`w-full h-14 px-5 bg-slate-50 hover:bg-slate-100/50 focus:bg-white border rounded-2xl outline-none transition-all duration-300 text-slate-900 font-medium placeholder:font-normal placeholder-slate-400 ${errors.raNumber ? 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-500/10' : 'border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10'}`}
               />
               {errors.raNumber && (

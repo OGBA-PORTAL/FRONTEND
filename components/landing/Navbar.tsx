@@ -35,7 +35,7 @@ export const Navbar = () => {
                         <Image src={logo} alt="RA OGBA Logo" fill className="object-cover" />
                     </div>
                     <h2 className="text-xl font-bold tracking-tight text-white drop-shadow-md">
-                        RA <span className="text-yellow-400">OGBA</span>
+                        RA <span className="text-yellow-400">OBBA</span>
                     </h2>
                 </div>
 
