@@ -161,7 +161,7 @@ export default function ChurchAdminReportsPage() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={raLogo.src} alt="RA Logo" style={{ width: 68, height: 68, objectFit: 'contain' }} />
                 <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: '15px', fontWeight: 900, color: '#1e3a8a', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Royal Ambassadors — OBBA Association</p>
+                    <p style={{ fontSize: '15px', fontWeight: 900, color: '#1e3a8a', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Royal Ambassadors — OGBA Association</p>
                     <p style={{ fontSize: '11px', color: '#475569', marginTop: '2px', margin: 0 }}>Official Exam Performance Report — Church Summary</p>
                 </div>
                 <div style={{ textAlign: 'right', fontSize: '10px', color: '#64748b' }}>
@@ -339,7 +339,7 @@ export default function ChurchAdminReportsPage() {
 
                                         {/* Print footer per exam */}
                                         <div style={{ display: 'none', borderTop: '1px solid #cbd5e1', margin: '0 16px 12px', paddingTop: 6 }} className="rpt-footer">
-                                            <p style={{ fontSize: 9, color: '#94a3b8', textAlign: 'right', margin: 0 }}>Royal Ambassadors OBBA Association — Church Exam Report — {printDate}</p>
+                                            <p style={{ fontSize: 9, color: '#94a3b8', textAlign: 'right', margin: 0 }}>Royal Ambassadors OGBA Association — Church Exam Report — {printDate}</p>
                                         </div>
                                     </div>
                                 );
@@ -463,7 +463,7 @@ export default function ChurchAdminReportsPage() {
 
                                         {/* Print footer */}
                                         <div style={{ display: 'none', borderTop: '1px solid #cbd5e1', margin: '0 16px 12px', paddingTop: 6 }} className="rpt-footer">
-                                            <p style={{ fontSize: 9, color: '#94a3b8', textAlign: 'right', margin: 0 }}>Royal Ambassadors OBBA Association — Rank Performance Report — {printDate}</p>
+                                            <p style={{ fontSize: 9, color: '#94a3b8', textAlign: 'right', margin: 0 }}>Royal Ambassadors OGBA Association — Rank Performance Report — {printDate}</p>
                                         </div>
                                     </div>
                                 );

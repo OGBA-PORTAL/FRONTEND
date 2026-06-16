@@ -39,7 +39,7 @@ export default function AdminSettingsPage() {
                     </div>
                     <div className="divide-y divide-slate-50 dark:divide-slate-800">
                         {[
-                            { label: 'Portal Name', value: 'OBBA RA Portal' },
+                            { label: 'Portal Name', value: 'OGBA RA Portal' },
                             { label: 'Version', value: 'v1.0.0' },
                             { label: 'Environment', value: 'Production' },
                             { label: 'Your Role', value: user?.role?.replace(/_/g, ' ') ?? '—' },

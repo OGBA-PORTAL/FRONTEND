@@ -53,7 +53,7 @@ export const Contact = () => {
                                 </div>
                                 <div>
                                     <h4 className="font-bold text-slate-900 text-lg mb-1">Email Us Directly</h4>
-                                    <p className="text-slate-500">raOBBA012@gmail.com</p>
+                                    <p className="text-slate-500">raogba012@gmail.com</p>
                                 </div>
                             </motion.div>
                         </div>
@@ -89,7 +89,7 @@ export const Contact = () => {
                                     </motion.div>
                                     <h3 className="text-3xl font-bold text-slate-900 mb-3 tracking-tight">Message Received!</h3>
                                     <p className="text-slate-500 text-lg max-w-sm mb-10 font-light">
-                                        Thank you for reaching out to RA OBBA. We will review your inquiry and be in touch shortly.
+                                        Thank you for reaching out to RA OGBA. We will review your inquiry and be in touch shortly.
                                     </p>
                                     <button
                                         onClick={() => setStatus('idle')}
