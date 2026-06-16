@@ -16,7 +16,7 @@ const Header = () => {
           <div className="size-8  rounded-lg flex items-center justify-center text-blue-900">
             <span className="material-symbols-outlined !text-xl text-white"><Shield></Shield></span>
           </div>
-        <Link href="/dashboard">  <h2 className="text-yellow-400 text-xl font-bold leading-tight tracking-tight">RA OBBA</h2></Link>
+        <Link href="/dashboard">  <h2 className="text-yellow-400 text-xl font-bold leading-tight tracking-tight">RA OGBA</h2></Link>
         </div>
         
         <nav className="flex items-center gap-4 md:gap-8">

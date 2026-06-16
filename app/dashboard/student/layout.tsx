@@ -105,7 +105,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                                 </div>
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-white font-bold text-sm leading-tight">OBBA Portal</p>
+                                <p className="text-white font-bold text-sm leading-tight">OGBA Portal</p>
                                 <p className="text-blue-300 text-xs">Member Portal</p>
                             </div>
                         </>
